@@ -731,7 +731,7 @@ IMPORTANT: Format your response as a numbered list with each suggestion on a sep
             return False
 
     def run_ideabox_assistant(self, use_microphone=False):
-        """Run the enhanced ideaBox assistant with all features"""
+        """Run the enhanced ideaBox assistant with separate feature modes"""
         print("Welcome to ideaBox Enhanced!")
         print("AI Creative Assistant + Score Tracking + Touch Control")
         print("="*60)
@@ -739,8 +739,33 @@ IMPORTANT: Format your response as a numbered list with each suggestion on a sep
         self.play_intro_sound()
         time.sleep(1)
         
+        # MODE SELECTION - Touch Sensor or Voice
+        if self.touch_sensor:
+            mode_question = "Hi! I'm ideaBox Enhanced. Touch pad 0 for Punishment Mode, or pad 1 for Score Tracking Mode."
+            self.text_to_speech(mode_question, "mode_question.wav")
+            
+            selected_mode = self.wait_for_mode_selection(timeout=30)
+            score_mode = (selected_mode == "score")
+            mode = "Score Tracking" if score_mode else "Punishment"
+        else:
+            # Fallback to voice/text input
+            mode_question = "Hi! I'm ideaBox Enhanced. Would you like to use Punishment Mode with creative ideas, or Score Tracking Mode?"
+            self.text_to_speech(mode_question, "mode_question.wav")
+            
+            mode_response = self.get_user_input(use_microphone, "general", duration=8)
+            
+            # Determine mode based on response
+            score_mode = False
+            if mode_response and any(word in mode_response.lower() for word in ["score", "track", "money", "points", "monopoly"]):
+                score_mode = True
+                mode = "Score Tracking"
+            else:
+                mode = "Punishment"
+        
+        print(f"\n>>> MODE SELECTED: {mode} <<<\n")
+        
         # Ask what game they're playing
-        game_question = "Hi! I'm ideaBox Enhanced. What party game are you playing?"
+        game_question = f"Great! What game are you playing?"
         self.text_to_speech(game_question, "game_question.wav")
         
         game_response = self.get_user_input(use_microphone, "game", duration=8)
@@ -751,103 +776,111 @@ IMPORTANT: Format your response as a numbered list with each suggestion on a sep
         self.current_game = game_response
         print(f"Game: {self.current_game}")
         
-        # Initialize score tracking if Monopoly or similar
-        if "monopoly" in self.current_game.lower() or "board" in self.current_game.lower():
-            score_question = "Would you like to enable score tracking for this game?"
-            self.text_to_speech(score_question, "score_question.wav")
-            
-            score_response = self.get_user_input(use_microphone, "confirmation", duration=6)
-            
-            if self.parse_confirmation(score_response):
-                init_msg = self.initialize_scores()
-                self.text_to_speech(init_msg, "score_init.wav")
-        
-        # Ask about punishments
-        punishment_question = f"Do you need creative punishment ideas for {self.current_game}?"
-        self.text_to_speech(punishment_question, "punishment_question.wav")
-        
-        wants_punishments = self.get_user_input(use_microphone, "confirmation", duration=6)
-        
-        if self.parse_confirmation(wants_punishments):
+        # ========== PUNISHMENT MODE ==========
+        if not score_mode:
+            # Get AI-powered punishment suggestions
             punishment_suggestions = self.get_ai_creative_suggestions(
                 self.current_game, 
                 "punishments"
             )
+            
+            # Handle punishment countdown with touch sensor
             self.handle_punishment_countdown(use_microphone, punishment_suggestions)
+            
+            # Ask for other creative help
+            other_help_question = "Would you like more creative ideas? I can suggest themes or game variations!"
+            self.text_to_speech(other_help_question, "other_help.wav")
+            
+            help_response = self.get_user_input(use_microphone, "confirmation", duration=6)
+            
+            if self.parse_confirmation(help_response):
+                help_request_question = "What would you like help with? Themes, variations, or something else?"
+                self.text_to_speech(help_request_question, "help_request.wav")
+                
+                help_request = self.get_user_input(use_microphone, "general", duration=10)
+                
+                if help_request:
+                    request_type = self.determine_request_type(help_request)
+                    
+                    ai_suggestions = self.get_ai_creative_suggestions(
+                        self.current_game, 
+                        request_type, 
+                        help_request
+                    )
+                    
+                    # Read out the suggestions
+                    if isinstance(ai_suggestions, list):
+                        for i, suggestion in enumerate(ai_suggestions, 1):
+                            suggestion_text = f"Suggestion {i}. {suggestion}"
+                            self.text_to_speech(suggestion_text, f"suggestion_{i}.wav")
+                            time.sleep(0.5)
+                    else:
+                        self.text_to_speech(str(ai_suggestions), "ai_suggestions.wav")
+                    
+                    time.sleep(2)
         
-        # Ask for other creative help
-        other_help_question = "What other creative ideas would you like? I can suggest themes, game variations, or scoring ideas!"
-        self.text_to_speech(other_help_question, "other_help.wav")
-        
-        help_request = self.get_user_input(use_microphone, "general", duration=10)
-        
-        if help_request:
-            request_type = self.determine_request_type(help_request)
+        # ========== SCORE TRACKING MODE ==========
+        else:
+            # Initialize scores
+            init_msg = self.initialize_scores()
+            self.text_to_speech(init_msg, "score_init.wav")
             
-            ai_suggestions = self.get_ai_creative_suggestions(
-                self.current_game, 
-                request_type, 
-                help_request
-            )
-            
-            # Read out the suggestions
-            if isinstance(ai_suggestions, list):
-                for i, suggestion in enumerate(ai_suggestions, 1):
-                    suggestion_text = f"Suggestion {i}. {suggestion}"
-                    self.text_to_speech(suggestion_text, f"suggestion_{i}.wav")
-                    time.sleep(0.5)
-            else:
-                self.text_to_speech(str(ai_suggestions), "ai_suggestions.wav")
-            
-            time.sleep(2)
-        
-        # Show scores if enabled
-        if self.score_initialized:
-            show_scores_question = "Would you like to see the current scores?"
-            self.text_to_speech(show_scores_question, "show_scores_q.wav")
-            
-            show_response = self.get_user_input(use_microphone, "confirmation", duration=6)
-            
-            if self.parse_confirmation(show_response):
+            # Score tracking loop
+            while True:
+                # Display current scores
                 scores = self.display_scores()
                 self.text_to_speech(scores, "current_scores.wav")
-        
-        # Offer continued help
-        continue_question = "Would you like any more creative ideas or help with your game?"
-        self.text_to_speech(continue_question, "continue.wav")
-        
-        continue_response = self.get_user_input(use_microphone, "confirmation", duration=6)
-        
-        if self.parse_confirmation(continue_response):
-            bonus_question = "What specific aspect of your game would you like to enhance?"
-            self.text_to_speech(bonus_question, "bonus_question.wav")
-            
-            bonus_request = self.get_user_input(use_microphone, "general", duration=10)
-            
-            if bonus_request:
-                bonus_suggestions = self.get_ai_creative_suggestions(
-                    self.current_game,
-                    "general", 
-                    bonus_request
-                )
                 
-                if isinstance(bonus_suggestions, list):
-                    for i, suggestion in enumerate(bonus_suggestions, 1):
-                        suggestion_text = f"Bonus idea {i}. {suggestion}"
-                        self.text_to_speech(suggestion_text, f"bonus_{i}.wav")
-                        time.sleep(0.5)
-                else:
-                    self.text_to_speech(str(bonus_suggestions), "bonus_suggestions.wav")
+                # Ask if they want to update scores
+                update_question = "Would you like to update a player's score?"
+                self.text_to_speech(update_question, "update_question.wav")
+                
+                update_response = self.get_user_input(use_microphone, "confirmation", duration=6)
+                
+                if not self.parse_confirmation(update_response):
+                    break
+                
+                # Get score update details
+                update_instruction = "Please say the player name, then the amount, then whether to add or subtract. For example: Player one, 500, add."
+                self.text_to_speech(update_instruction, "update_instruction.wav")
+                
+                update_input = self.get_user_input(use_microphone, "general", duration=10)
+                
+                if update_input:
+                    # Parse the update (simple parsing - can be enhanced)
+                    # Look for player names
+                    player = None
+                    for p in self.player_scores.keys():
+                        if p in update_input.lower():
+                            player = p
+                            break
+                    
+                    # Look for amount
+                    numbers = re.findall(r'\d+', update_input)
+                    amount = numbers[0] if numbers else "0"
+                    
+                    # Look for operation
+                    operation = "add"
+                    if any(word in update_input.lower() for word in ["subtract", "minus", "paid", "lost", "owes"]):
+                        operation = "subtract"
+                    
+                    if player:
+                        result = self.update_score(player, amount, operation)
+                        self.text_to_speech(result, "score_update_result.wav")
+                    else:
+                        error_msg = "Sorry, I couldn't identify the player. Please try again."
+                        self.text_to_speech(error_msg, "score_error.wav")
         
         # Farewell
-        farewell = f"Have an amazing time with your {self.current_game}! This is ideaBox Enhanced signing off. Remember, creativity and laughter are the most important ingredients for any great party game!"
+        farewell = f"Have an amazing time with your {self.current_game}! This is ideaBox Enhanced signing off!"
         self.text_to_speech(farewell, "farewell.wav")
         
         print("\nideaBox Enhanced session complete!")
         return {
             "game": self.current_game,
-            "ai_powered": True,
-            "score_tracking": self.score_initialized,
+            "mode": mode,
+            "ai_powered": not score_mode,
+            "score_tracking": score_mode,
             "touch_sensor": self.touch_sensor is not None,
             "session_complete": True
         }
@@ -884,6 +917,7 @@ def main():
     print("ideaBox ENHANCED SESSION LOG:")
     print("="*60)
     print(f"Game: {result.get('game', 'Unknown')}")
+    print(f"Mode: {result.get('mode', 'Unknown')}")
     print(f"AI-powered suggestions: {'✓' if result.get('ai_powered') else '✗'}")
     print(f"Score tracking enabled: {'✓' if result.get('score_tracking') else '✗'}")
     print(f"Touch sensor active: {'✓' if result.get('touch_sensor') else '✗'}")
