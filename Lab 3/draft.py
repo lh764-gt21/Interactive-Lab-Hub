@@ -35,20 +35,25 @@ class IdeaBoxEnhanced:
         self.touch_sensor = None
         self.setup_touch_sensor()
         
-        # Touch-to-time mapping (12 pads for different durations)
+        # Touch sensor mappings
+        # Pads 0-4: Select punishment (1-5)
+        # Pads 5-11: Select duration
+        self.touch_punishment_map = {
+            0: 1,  # Pad 0 = Punishment option 1
+            1: 2,  # Pad 1 = Punishment option 2
+            2: 3,  # Pad 2 = Punishment option 3
+            3: 4,  # Pad 3 = Punishment option 4
+            4: 5   # Pad 4 = Punishment option 5
+        }
+        
         self.touch_duration_map = {
-            0: 5,   # Pad 0 = 5 seconds
-            1: 10,  # Pad 1 = 10 seconds
-            2: 15,  # Pad 2 = 15 seconds
-            3: 20,  # Pad 3 = 20 seconds
-            4: 25,  # Pad 4 = 25 seconds
-            5: 30,  # Pad 5 = 30 seconds
-            6: 35,  # Pad 6 = 35 seconds
-            7: 40,  # Pad 7 = 40 seconds
-            8: 45,  # Pad 8 = 45 seconds
-            9: 50,  # Pad 9 = 50 seconds
-            10: 60, # Pad 10 = 60 seconds
-            11: 90  # Pad 11 = 90 seconds
+            5: 5,   # Pad 5 = 5 seconds
+            6: 10,  # Pad 6 = 10 seconds
+            7: 15,  # Pad 7 = 15 seconds
+            8: 20,  # Pad 8 = 20 seconds
+            9: 30,  # Pad 9 = 30 seconds
+            10: 45, # Pad 10 = 45 seconds
+            11: 60  # Pad 11 = 60 seconds
         }
         
         # Create audio directory if it doesn't exist
@@ -71,26 +76,7 @@ class IdeaBoxEnhanced:
             print("Touch sensor features will be disabled.")
             self.touch_sensor = None
     
-    def wait_for_touch_input(self, timeout=30):
-        """Wait for user to touch a pad and return the selected duration"""
-        if not self.touch_sensor:
-            print("Touch sensor not available, using default 10 seconds")
-            return 10
-        
-        print("\n" + "="*60)
-        print("TOUCH A PAD TO SELECT PUNISHMENT DURATION:")
-        print("="*60)
-        for pad, duration in self.touch_duration_map.items():
-            print(f"Pad {pad:2d} → {duration:2d} seconds")
-        print("="*60)
-        
-        start_time = time.time()
-        
-        while (time.time() - start_time) < timeout:
-            # Check each pad
-            for pad in range(12):
-                if self.touch_sensor[pad].value:
-                    duration = self.touch_duration_map[pad]
+[pad]
                     print(f"\n✓ Pad {pad} touched! Selected duration: {duration} seconds")
                     time.sleep(0.3)  # Debounce
                     return duration
@@ -639,7 +625,7 @@ IMPORTANT: Format your response as a numbered list with each suggestion on a sep
             return "general"
 
     def handle_punishment_countdown(self, use_microphone, punishment_suggestions):
-        """Handle punishment flow with touch sensor for duration selection"""
+        """Handle punishment flow with touch sensor for selection and duration"""
         try:
             print("\n" + "="*60)
             print("PUNISHMENT OPTIONS:")
@@ -664,21 +650,33 @@ IMPORTANT: Format your response as a numbered list with each suggestion on a sep
                 self.text_to_speech(punishment_text, f"punishment_option_{i}.wav")
                 time.sleep(0.5)
             
-            choice_question = "Which punishment would you like to use? Say the number."
-            self.text_to_speech(choice_question, "ask_punishment_choice.wav")
-            
-            choice_response = self.get_user_input(use_microphone, "punishment_choice", duration=5)
-            
+            # USE TOUCH SENSOR TO SELECT PUNISHMENT
             selected_index = 0
-            if choice_response:
-                numbers = re.findall(r'\d+', choice_response)
-                if numbers:
-                    try:
-                        selected_index = int(numbers[0]) - 1
-                        if selected_index < 0 or selected_index >= len(punishment_suggestions):
+            if self.touch_sensor:
+                choice_question = "Touch pad 0 through 4 to select which punishment to use."
+                self.text_to_speech(choice_question, "ask_punishment_choice.wav")
+                
+                selected_option = self.wait_for_touch_punishment(
+                    max_options=len(punishment_suggestions), 
+                    timeout=30
+                )
+                selected_index = selected_option - 1
+            else:
+                # Fallback to voice/text input
+                choice_question = "Which punishment would you like to use? Say the number."
+                self.text_to_speech(choice_question, "ask_punishment_choice.wav")
+                
+                choice_response = self.get_user_input(use_microphone, "punishment_choice", duration=5)
+                
+                if choice_response:
+                    numbers = re.findall(r'\d+', choice_response)
+                    if numbers:
+                        try:
+                            selected_index = int(numbers[0]) - 1
+                            if selected_index < 0 or selected_index >= len(punishment_suggestions):
+                                selected_index = 0
+                        except:
                             selected_index = 0
-                    except:
-                        selected_index = 0
             
             selected_punishment = punishment_suggestions[selected_index]
             
@@ -695,7 +693,7 @@ IMPORTANT: Format your response as a numbered list with each suggestion on a sep
             
             # USE TOUCH SENSOR FOR DURATION
             if self.touch_sensor:
-                duration_msg = "Touch a pad on the sensor to select the punishment duration."
+                duration_msg = "Touch pad 5 through 11 to select the punishment duration."
                 self.text_to_speech(duration_msg, "touch_duration.wav")
                 countdown_seconds = self.wait_for_touch_input(timeout=30)
             else:
