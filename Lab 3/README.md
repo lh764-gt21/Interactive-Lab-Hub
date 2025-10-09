@@ -315,6 +315,13 @@ python party_game_assistant.py
 - Print or display the pad mapping on screen during selection
 - Add a physical button for "start listening" to avoid false triggers
 
+#### User 3: Rachael
+
+- The punishment part works really well. It actually makes the game smoother and saves time when people get stuck arguing. The “update scores” flow also works pretty well. However, sometimes the “start game” function fails to capture the number of players. Also, when answering general questions, I sometimes hear two voices at the same time (most of the time it happens when it calls Ollama - TTS overlaps with the model’s output or two prompts get triggered close together).
+
+- The controller was more useful than I expected. Touch pads made choosing options and timing much faster, but the mapping isn’t obvious to new users, so people might hesitate. We also saw a few false touches if a finger lingered, and sometimes people might be too careful because they are afraid of pressing the wrong button, since they are close.
+
+
 ---
 
 **What worked well about the system and what didn't? @Zoe Tseng**
