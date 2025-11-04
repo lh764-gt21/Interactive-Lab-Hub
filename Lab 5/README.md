@@ -41,7 +41,24 @@ Class 2: Thumbs up
 
 [Video demo](https://youtu.be/MrGmYIaht3A)
 
-### 2. Testing Moondream
+### 2. Testing MediaPipe
+
+![ScreenRecording2025-11-03at15.43.39111-ezgif.com-optimize](https://hackmd.io/_uploads/rkTXwqL1bx.gif)
+
+
+**1. When does it do what it is supposed to do?**
+**2. When and why does it fail?**
+**3. Other scenarios that could cause problems**
+**4. Optimizations to the sense-making algorithm**
+**5. How we modified the system to address these issues**
+
+
+<!-- Consider how you might use this position based approach to create an interaction, and write how you might use it on either face, hand or body pose tracking. -->
+
+<!-- (You might also consider how this notion of percentage control with hand tracking might be used in some of the physical UI you may have experimented with in the last lab, for instance in controlling a servo or rotary encoder.) -->
+
+
+### 3. Testing Moondream
 
 **1. When does it do what it is supposed to do?**
 
@@ -83,6 +100,7 @@ During testing, we found that while Moondream could understand and describe visu
 - **MediaPipe** is more efficient, on-device hand-landmark detection that can reliably infer gestures without requiring cloud inference or text-based reasoning.
 
 We think the interactive system becomes more responsive, deterministic, and robust under real-time conditions if we use the above 2 models instead of `moondream`.
+
 
 ### Part B
 ### Construct a simple interaction.
@@ -203,7 +221,6 @@ During the lecture, we mentioned questions to help characterize a material:
 * What are other properties/behaviors of X?
 * How does X feel?
 
-**\*\*\*Include a short video demonstrating the answers to these questions.\*\*\***
 
 #### Teachable Machine
 | **Question** | **Your Observations** |
@@ -219,4 +236,32 @@ During the lecture, we mentioned questions to help characterize a material:
 
 Following exploration and reflection from Part 1, finish building your interactive system, and demonstrate it in use with a video.
 
-**\*\*\*Include a short video demonstrating the finished result.\*\*\***
+
+#### Summary
+
+Based on user feedback and exploration of what MediaPipe does well & not so well, we decided to build a simple balloon.
+
+[Demo video](https://youtu.be/vyeFcWQE9fc)
+
+#### Balloon Game Rules / Console Log
+
+***Gestures***
+- **POINT (index finger only)** → Pop **red** balloons  
+- **OPEN PALM (all fingers extended)** → Grab **blue** balloons  
+
+
+***Rule Table***
+
+| **Balloon Color** | **Required Gesture** | **Action** | **Points** | **Penalty** | **User Instructions** |
+|--------------------|----------------------|-------------|-------------|------------------------|------------|
+| **Red** | ☝️ **POINT** (index finger only) | Pop | **+3** | -5 | Only red balloons should be popped with the point gesture. |
+| **Blue** | ✋ **OPEN PALM** (all fingers extended) | Grab | **+3** | -5 | Only blue balloons should be grabbed with the palm gesture. |
+| **Black** | Avoid | Avoid | **0** | -5 if touched or acted on | Black balloons are traps—don’t pop or grab them. |
+
+***Game Controls***
+
+| **Action** | **Key** | **Description** |
+|-------------|----------|-----------------|
+| Quit game | `q` | Exit the game |
+| Restart game | `r` | Restart from the beginning |
+| Pause game | `p` | Pause the game |
