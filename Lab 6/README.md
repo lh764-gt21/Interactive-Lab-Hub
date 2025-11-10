@@ -69,7 +69,31 @@ Each Pi = one pixel, controlled by RGB sensor, displayed in real-time grid.
 
 **Setup:**
 
-1. **Server** (one person on laptop):
+1. **Sensor**
+
+#### Light/Proximity/Gesture sensor (APDS-9960)
+We use this sensor [Adafruit APDS-9960](https://www.adafruit.com/product/3595) for this exmaple to detect light (also RGB)
+ 
+<img src="https://cdn-shop.adafruit.com/970x728/3595-06.jpg" width=200>
+
+Connect it to your pi with Qwiic connector
+
+
+<img src="imgs/IMG_0270.jpg" height="200" />
+We need to use the screen to display the color detection, so we need to stop the running piscreen.service to make your screen available again
+
+```bash
+# stop the screen service
+sudo systemctl stop piscreen.service
+```
+
+if you want to restart the screen service
+```bash
+# start the screen service
+sudo systemctl start piscreen.service
+```
+ 
+2. **Server** (one person on laptop):
 ```bash
 cd "Lab 6"  
 source .venv/bin/activate
@@ -198,6 +222,7 @@ mosquitto_sub -h farlab.infosci.cornell.edu -p 1883 -t "IDD/#" -u idd -P "device
 **Grid:** Verify server running, check MQTT in console, test with web controller
 
 **Pi venv:** Make sure to activate: `source .venv/bin/activate`
+
 
 ---
 
