@@ -257,9 +257,7 @@ Code snippets with explanations
 - game result
 <img src="https://hackmd.io/_uploads/BkUMbcGlZl.jpg" width="400">
 
-**Video Demo**
-[https://youtu.be/FyOj0FAjtRE](https://)
-
+[Video Demo](https://youtu.be/FyOj0FAjtRE)
 
 **What did they think before trying:**
 (Irene Wu, Jessica Hsiao) thought it was a great idea because the game allows players to interact and compete regardless of physical distance,  as long as their Pis are connected, they can still play together in real time.
