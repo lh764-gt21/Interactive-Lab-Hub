@@ -1,0 +1,15 @@
+Adafruit-Blinka==8.64.0
+adafruit-circuitpython-apds9960==3.1.16
+adafruit-circuitpython-busdevice==5.2.13
+adafruit-circuitpython-connectionmanager==3.1.5
+adafruit-circuitpython-register==1.10.4
+adafruit-circuitpython-requests==4.1.13
+adafruit-circuitpython-rgb-display==3.14.1
+adafruit-circuitpython-typing==1.12.1
+Adafruit-PlatformDetect==3.82.0
+Adafruit-PureIO==1.1.11
+opencv-python==4.11.0.86
+mediapipe==0.10.18
+pillow==11.3.0
+pygame==2.5.2
+
