@@ -1,133 +1,287 @@
-# Gesture DJ - Implementation Package Summary
+# Gesture DJ 🎵
 
-## What You Got
+A multi-modal DJ controller for Raspberry Pi that uses gesture sensors, touch input, and voice commands to control music playback.
 
-Your complete Gesture DJ codebase is ready! Here's everything included:
+## Features
 
-### Core System Files (9 files)
+- **APDS-9960 Gesture Control**: Swipe gestures to navigate tracks and control volume
+- **MPR121 Touch Pads**: Capacitive touch pads to select specific tracks (1-10)
+- **Voice Control**: Say "play" or "pause" to control playback using offline speech recognition
+- **MediaPipe Hand Gestures**: Control mood lighting and effects with hand gestures 👋✨
+  - 5 distinct mood themes (Energetic, Chill, Party, Relaxed, Default)
+  - Real-time mood changes on web UI and OLED display
+  - Effects toggle (bass boost) with fist gesture
+  - Playback speed control via finger distance
+- **TFT Display**: Retro vaporwave-style visual feedback on PiTFT display
+  - Color-coded mood indicators
+  - Gesture feedback with emojis
+- **Web Visualization**: Real-time audio visualizations accessible from any browser
+  - Dynamic background colors based on mood
+  - Waveform display with beat detection
+  - Frequency spectrum analyzer
+  - Audience mode with RGB bars
+  - Particle effects
+- **10 Track Support**: Load up to 10 MP3 tracks for seamless switching
 
-1. **gesture_dj.py** (11KB) - Main integration system
-   - Combines all modules
-   - Handles event loop
-   - Simulation and hardware modes
+## Hardware Requirements
 
-2. **audio_engine.py** (9KB) - Audio playback system
-   - 10-track management
-   - Volume control
-   - Effects (bass boost, tempo)
-   - Sound effect feedback
+### Required
+- Raspberry Pi 5 (or Pi 4)
+- APDS-9960 Gesture Sensor (I2C address: 0x39)
+- PiTFT Display (SPI)
+- USB Microphone (for voice control)
+- USB Camera (for MediaPipe hand tracking)
+- Speakers or headphones (3.5mm audio output)
+- MPR121 Capacitive Touch Sensor (I2C address: 0x5A)
 
-3. **apds_gesture.py** (6KB) - APDS gesture sensor
-   - Swipe detection (left/right/up/down)
-   - Proximity sensing
-   - Hardware and simulation modes
+## Wiring
 
-4. **hand_tracker.py** (11KB) - MediaPipe hand tracking
-   - Finger counting (0-5)
-   - Pose classification
-   - 3-second hold detection
-   - Finger distance measurement
+### APDS-9960 (I2C)
+| APDS-9960 | Raspberry Pi |
+|-----------|--------------|
+| VCC       | 3.3V         |
+| GND       | GND          |
+| SDA       | GPIO 2 (SDA) |
+| SCL       | GPIO 3 (SCL) |
 
-5. **display.py** (9KB) - PiTFT visual feedback
-   - Track information display
-   - Progress bar
-   - Status indicators
-   - Console simulation mode
+### MPR121 (I2C) - Optional
+| MPR121    | Raspberry Pi |
+|-----------|--------------|
+| VCC       | 3.3V         |
+| GND       | GND          |
+| SDA       | GPIO 2 (SDA) |
+| SCL       | GPIO 3 (SCL) |
 
-### Documentation Files (3 files)
 
-6. **README.md** (9KB) - Complete project documentation
-   - Full feature list
-   - Setup instructions
-   - API reference
-   - Troubleshooting guide
 
-7. **QUICKSTART.md** (7KB) - Immediate start guide
-   - Fast setup steps
-   - Testing commands
-   - Module responsibilities
-   - Common questions
+## Installation
 
-8. **TESTING.md** (11KB) - Testing & integration checklist
-   - Pre-integration tests
-   - Phase-by-phase integration
-   - User testing guide
-   - Bug tracker
+### 1. Clone the Repository
+```bash
+cd ~/Interactive-Lab-Hub
+cd "Final Project"
+```
 
-### Setup Files (1 file)
-
-9. **setup.sh** (2KB) - Directory setup script
-   - Creates tracks/ and effects/ directories
-   - Generates README files
-   - Setup instructions
-
----
-
-## Key Features Implemented
-
-### APDS Gestures
-- Swipe left: Previous track (wraps 1-10)
-- Swipe right: Next track (wraps 10-1)
-- Swipe up: Volume +10%
-- Swipe down: Volume -10%
-
-### MediaPipe Gestures
-- Palm (5 fingers): Play/Pause toggle (hold 2 seconds)
-- Fist (0 fingers): Stop (hold 2 seconds)
-- Finger Distance (thumb-index): Playback speed (0.5x to 3.5x, discrete presets)
-
-### Audio System
-- 10-track playback with wrapping
-- Volume control (0-100%)
-- Play/pause/resume/stop
-- Bass boost toggle
-- Reverb toggle
-- Tempo adjustment
-- Sound effect feedback (beep/click/whoosh)
-
-### Display System
-- Track number (X/10)
-- Track name
-- Real-time progress bar
-- Volume percentage
-- Playback state (PLAYING/PAUSED/STOPPED)
-- Active effects display (Bass, Reverb, Tempo)
-
----
-
-## Immediate Next Steps
-
-### Step 1: Run Setup (30 seconds)
+### 2. Run Setup Script
 ```bash
 chmod +x setup.sh
 ./setup.sh
-
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
 ```
 
-### Step 2: Get Audio Files (5-10 minutes)
-Download 10 MP3 tracks from:
-- [Incompetech](https://incompetech.com/music/)
-- [Free Music Archive](https://freemusicarchive.org/)
-- [Sound Effect](https://pixabay.com/sound-effects/)
+This will:
+- Create a Python virtual environment (`.venv`)
+- Install all required Python packages
+- Download the Vosk speech recognition model
+- Create `tracks/` and `effects/` directories
 
-Name them: `track01.mp3` through `track10.mp3`
-Place in: `tracks/` directory
+### 3. Add Music Files
 
-(Optional) Get 3 effect sounds: beep.mp3, click.mp3, whoosh.mp3
-Place in: `effects/` directory
+Place your MP3 tracks in the `tracks/` directory:
+```
+tracks/
+├── track01.mp3
+├── track02.mp3
+├── track03.mp3
+├── track04.mp3
+├── track05.mp3
+├── track06.mp3
+├── track07.mp3
+├── track08.mp3
+├── track09.mp3
+└── track10.mp3
+```
 
-### Step 3: Test in Simulation Mode (RIGHT NOW!)
+Optionally, add sound effects in `effects/`:
+```
+effects/
+├── beep.mp3    (track change sound)
+├── click.mp3   (volume change sound)
+└── whoosh.mp3  (effect toggle sound)
+```
+
+### 4. Enable I2C
 ```bash
-# Works without any hardware or audio files!
-python gesture_dj.py --sim
+sudo raspi-config
+# Navigate to: Interface Options -> I2C -> Enable
 ```
 
-Use keyboard controls:
-- Arrow keys for APDS gestures
-- Number keys 0-5 for MediaPipe
-- Space for quick play/pause
-- Q to quit
+### 5. Verify Sensors
+```bash
+sudo i2cdetect -y 1
+```
+You should see:
+- `39` - APDS-9960 gesture sensor
+- `5a` - MPR121 touch sensor (if connected)
+
+## Usage
+
+### Start the Application
+```bash
+cd ~/Interactive-Lab-Hub/Final\ Project
+source .venv/bin/activate
+python gesture_dj.py
+```
+
+### Start with Web Visualization
+```bash
+python gesture_dj.py --web
+```
+Then open `http://<raspberry-pi-ip>:5000` in any browser to see the visualizations.
+
+### Controls
+
+#### APDS-9960 Gesture Controls
+| Gesture      | Action              |
+|--------------|---------------------|
+| Swipe RIGHT  | Next track (auto-play) |
+| Swipe LEFT   | Previous track (auto-play) |
+| Swipe UP     | Volume up (+10%)    |
+| Swipe DOWN   | Volume down (-10%)  |
+
+#### MPR121 Touch Controls (Optional)
+| Pad      | Action              |
+|----------|---------------------|
+| Pad 0-9  | Select track 1-10   |
+| Pad 10   | Play/Pause toggle   |
+| Pad 11   | Stop playback       |
+
+#### MediaPipe Gestures (Light/Dark Theme + Bubbles)
+| Gesture | Type | Action | Effect |
+|---------|------|--------|--------|
+| ✋ OPEN PALM | Hand | Light theme | ☀️ Day time UI (bright) |
+| ✊ CLOSED FIST | Hand | Dark theme | 🌙 Night time UI (dark) |
+| 💨 BLOW | Mouth | Activate bubbles | 💭 30 bubbles for 5 seconds |
+
+**Tips:**
+- Hold hand gestures for 2 seconds for confirmation
+- Keep hand 1-2 feet from camera
+- Open mouth wide to blow (triggers bubble effect)
+- Use good lighting for best detection
+- Watch OLED display for visual feedback
+
+#### Voice Commands
+| Command  | Action              |
+|----------|---------------------|
+| "play"   | Start/resume playback |
+| "pause"  | Pause playback      |
+
+Alternative words also work:
+- Play: "start", "go", "resume"
+- Pause: "stop", "wait", "hold"
+
+### Web Visualization Modes
+
+When running with `--web`, access the visualizer at `http://<pi-ip>:5000`:
+
+| Mode      | Description |
+|-----------|-------------|
+| WAVEFORM  | Real-time waveform with beat-reactive glow |
+| SPECTRUM  | Frequency spectrum analyzer with color gradient |
+| AUDIENCE  | RGB bars bouncing with bass, party mode |
+| PARTICLES | Pulsing rings with particle burst effects |
+
+**Features:**
+- 🎵 Track waveform visualization - see beats and peaks
+- 📊 Frequency spectrum with bass/mid/high analysis
+- 🎨 RGB bars bounce with bass levels
+- ✨ Reactive particle effects on beat detection
+- 🖱️ Click and drag on waveform to "scratch"
+- 📱 Works on mobile browsers too
+
+### Stop the Application
+Press `Ctrl+C` to exit gracefully.
+
+## File Structure
+
+```
+Final Project/
+├── gesture_dj.py       # Main application
+├── audio_engine.py     # Audio playback and track management
+├── apds_gesture.py     # APDS-9960 gesture sensor interface
+├── mpr121_touch.py     # MPR121 touch sensor interface
+├── voice_control.py    # Vosk-based voice recognition
+├── hand_tracker.py     # MediaPipe hand tracking (disabled)
+├── display.py          # PiTFT display interface
+├── requirements.txt    # Python dependencies
+├── setup.sh            # Setup script
+├── README.md           # This file
+├── tracks/             # MP3 track files
+│   └── track01-10.mp3
+└── effects/            # Sound effect files
+    ├── beep.mp3
+    ├── click.mp3
+    └── whoosh.mp3
+```
+
+## Module Descriptions
+
+### `gesture_dj.py`
+Main integration module that combines all input methods and controls audio playback.
+
+### `audio_engine.py`
+Handles audio playback using pygame:
+- Track loading and switching
+- Play, pause, stop, resume controls
+- Volume control
+- Playback speed adjustment (via mixer frequency)
+
+### `apds_gesture.py`
+Interface for APDS-9960 gesture sensor:
+- Swipe detection (up, down, left, right)
+- Proximity sensing
+
+### `mpr121_touch.py`
+Interface for MPR121 capacitive touch sensor:
+- 12 touch pads (0-11)
+- Rising edge detection for reliable touch input
+
+### `voice_control.py`
+Offline speech recognition using Vosk:
+- Uses USB microphone
+- Recognizes "play" and "pause" commands
+- Runs in background thread
+
+### `display.py`
+PiTFT display interface:
+- Shows track number and name
+- Displays volume level
+- Shows playback status (playing/paused/stopped)
+- Progress bar visualization
+
+## Troubleshooting
+
+### APDS Sensor Not Working
+1. Check I2C connection: `sudo i2cdetect -y 1` (should show `39`)
+2. Ensure I2C is enabled in raspi-config
+3. Check wiring (VCC, GND, SDA, SCL)
+
+### Voice Control Not Working
+1. Check microphone is connected: `arecord -l`
+2. Test microphone: `arecord -d 3 test.wav && aplay test.wav`
+3. Ensure Vosk model is downloaded (check `~/.cache/vosk/`)
+
+### No Audio Output
+1. Check speaker/headphone connection
+2. Set audio output: `sudo raspi-config` -> System Options -> Audio
+3. Test audio: `speaker-test -t wav`
+
+### Display Not Showing
+1. Ensure PiTFT is properly installed
+2. Check SPI is enabled in raspi-config
+3. Verify display driver is loaded
+
+### MPR121 Not Detected
+1. Check I2C connection: `sudo i2cdetect -y 1` (should show `5a`)
+2. MPR121 is optional - system works without it
+
+## Dependencies
+
+See `requirements.txt` for full list. Key dependencies:
+- `pygame` - Audio playback
+- `adafruit-circuitpython-apds9960` - APDS gesture sensor
+- `adafruit-circuitpython-mpr121` - MPR121 touch sensor
+- `vosk` - Offline speech recognition
+- `sounddevice` - Microphone input
+- `pillow` - Image processing for display
+- `lgpio` - GPIO for Raspberry Pi 5
+

@@ -1,11 +1,9 @@
 """
 MediaPipe Hand Tracking Module
-Handles camera-based hand pose recognition
-Owner: Zoe (yzt2)
+Owner: Eva Huang (lh764)
 """
 
 import time
-import math
 import os
 
 # Disable OpenCV GUI if no display available
@@ -19,58 +17,101 @@ try:
     MEDIAPIPE_AVAILABLE = True
 except ImportError:
     MEDIAPIPE_AVAILABLE = False
-    print("MediaPipe not available - running in simulation mode")
+    print("MediaPipe not available - hand tracking disabled")
 
 
 class HandTracker:
-    def __init__(self, simulation_mode=False, headless=None):
+    """Simplified hand tracker - only palm and fist detection"""
+    
+    def __init__(self, headless=False):
         """
         Initialize MediaPipe hand tracking
-        simulation_mode: If True, use keyboard instead of camera
-        headless: If True, don't show camera window (auto-detect if None)
+        Args:
+            headless: If True, don't show camera window
         """
-        self.simulation_mode = simulation_mode or not MEDIAPIPE_AVAILABLE
-        
-        # Auto-detect headless mode
-        if headless is None:
-            headless = not bool(os.environ.get('DISPLAY'))
         self.headless = headless
-        
-        # Hand state
         self.current_pose = None
-        self.finger_count = 0
-        self.hand_rotation = 0.0
-        self.finger_distance = 0.0
         self.gesture_start_time = None
-        self.gesture_hold_threshold = 2.0  # 2 seconds hold time for palm/fist
+        self.gesture_hold_threshold = 2.5  # 2.5 seconds hold time
+        self.simulation_mode = False
+        self.last_frame = None  # For web streaming
         
-        if not self.simulation_mode:
-            try:
-                self.mp_hands = mp.solutions.hands
-                self.hands = self.mp_hands.Hands(
-                    static_image_mode=False,
-                    max_num_hands=1,
-                    min_detection_confidence=0.7,
-                    min_tracking_confidence=0.5
-                )
-                self.mp_draw = mp.solutions.drawing_utils
-                
-                # Initialize camera
-                self.cap = cv2.VideoCapture(0)
-                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-                
-                print("MediaPipe hand tracking initialized")
-            except Exception as e:
-                print(f"Failed to initialize MediaPipe: {e}")
-                print("Falling back to simulation mode")
+        # Finger pinch detection (thumb + index)
+        self.last_pinch_distance = None
+        self.peace_detected = False
+        self.peace_cooldown_time = None
+        self.peace_cooldown_duration = 0.5  # 0.5 seconds between peace signs
+        
+        if not MEDIAPIPE_AVAILABLE:
+            self.simulation_mode = True
+            print("[HandTracker] MediaPipe not available")
+            return
+        
+        try:
+            # Initialize MediaPipe Hands
+            self.mp_hands = mp.solutions.hands
+            self.hands = self.mp_hands.Hands(
+                static_image_mode=False,
+                max_num_hands=1,
+                min_detection_confidence=0.7,
+                min_tracking_confidence=0.5
+            )
+            self.mp_draw = mp.solutions.drawing_utils
+            
+            # Initialize camera
+            self.cap = cv2.VideoCapture(0)
+            if not self.cap.isOpened():
+                print("[HandTracker] Failed to open camera")
                 self.simulation_mode = True
-        else:
-            print("MediaPipe running in simulation mode")
+                return
+            
+            # Lower resolution for better performance
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
+            self.cap.set(cv2.CAP_PROP_FPS, 30)
+            
+            print("[HandTracker] Hand tracking initialized (palm/fist only)")
+            
+        except Exception as e:
+            print(f"[HandTracker] Failed to initialize: {e}")
+            self.simulation_mode = True
+    
+    def detect_peace_sign(self, landmarks, finger_count):
+        """
+        Detect peace sign gesture (✌️ two fingers up)
+        Returns True if exactly 2 fingers are extended (index + middle)
+        """
+        if not landmarks:
+            return False
+
+        current_time = time.time()
+        
+        # Check cooldown to prevent rapid re-triggering
+        if self.peace_cooldown_time and (current_time - self.peace_cooldown_time) < self.peace_cooldown_duration:
+            return False
+
+        # Peace sign = exactly 2 fingers extended
+        if finger_count == 2:
+            # Verify index and middle fingers are up (landmarks 8 and 12)
+            index_tip = landmarks[8]
+            middle_tip = landmarks[12]
+            index_pip = landmarks[6]
+            middle_pip = landmarks[10]
+            
+            # Both tips should be above their PIP joints
+            index_up = index_tip.y < index_pip.y
+            middle_up = middle_tip.y < middle_pip.y
+            
+            if index_up and middle_up:
+                self.peace_cooldown_time = current_time
+                print(f"[Peace] PEACE SIGN DETECTED!")
+                return True
+        
+        return False
     
     def count_fingers(self, landmarks):
         """
-        Count extended fingers based on landmarks
+        Count extended fingers
         Returns: 0-5
         """
         if not landmarks:
@@ -79,7 +120,7 @@ class HandTracker:
         fingers = []
         
         # Thumb (compare tip with IP joint)
-        if landmarks[4].x < landmarks[3].x:  # Right hand assumption
+        if landmarks[4].x < landmarks[3].x:
             fingers.append(1)
         else:
             fingers.append(0)
@@ -96,66 +137,25 @@ class HandTracker:
         
         return sum(fingers)
     
-    def get_finger_distance(self, landmarks, image_width=640, image_height=480):
-        """
-        Calculate distance between thumb and index finger tips
-        Used for playback speed control (wider = faster, narrower = slower)
-        Returns: 0.0-1.0 normalized distance
-        """
-        if not landmarks:
-            return 0.0
-        
-        # Get thumb tip (landmark 4) and index finger tip (landmark 8) in pixel coordinates
-        thumb_tip = landmarks[4]
-        index_tip = landmarks[8]
-        
-        # Convert normalized coordinates to pixel coordinates
-        thumbX = int(thumb_tip.x * image_width)
-        thumbY = int(thumb_tip.y * image_height)
-        indexX = int(index_tip.x * image_width)
-        indexY = int(index_tip.y * image_height)
-        
-        # Calculate Euclidean distance in pixels
-        distance = math.hypot(indexX - thumbX, indexY - thumbY)
-        
-        # Normalize to 0-1 range (50-300 pixels typical range from hand_pose.py)
-        # 50 pixels = close (0.0), 300 pixels = far (1.0)
-        min_dist = 50
-        max_dist = 300
-        normalized = (distance - min_dist) / (max_dist - min_dist)
-        
-        # Clamp to 0-1 range
-        return max(0.0, min(1.0, normalized))
-    
     def classify_pose(self, finger_count):
         """
-        Classify hand pose based on finger count
+        Classify hand pose - ONLY palm (5) or fist (0)
+        Returns: 'palm', 'fist', or 'unknown'
         """
         if finger_count == 5:
-            return 'palm'  # Open palm - Play/Pause
+            return 'palm'   # Open palm → Light theme
         elif finger_count == 0:
-            return 'fist'  # Closed fist - Stop
-        elif finger_count == 2:
-            return 'peace'  # Two fingers (V sign) - Bass boost
-        elif finger_count == 4:
-            return 'four'  # Four fingers - Reverb
-        elif finger_count == 1:
-            return 'one'  # One finger - Reserved
-        elif finger_count == 3:
-            return 'three'  # Three fingers - Reserved
+            return 'fist'   # Closed fist → Dark theme
         else:
-            return 'unknown'
+            return 'unknown'  # Ignore other finger counts
     
     def check_gesture_hold(self, pose):
         """
-        Check if a gesture has been held long enough (2 seconds for palm/fist)
-        Returns: True if held long enough, False otherwise
+        Check if gesture held for 2 seconds
+        Returns: True if confirmed, False otherwise
         """
-        # Only require hold for palm and fist
-        requires_hold = pose in ['palm', 'fist']
-        
-        if not requires_hold:
-            return True  # Instant for other gestures
+        if pose not in ['palm', 'fist']:
+            return False
         
         if pose != self.current_pose:
             # New gesture started
@@ -173,234 +173,133 @@ class HandTracker:
         
         return False
     
-    def process_frame(self):
+    def get_data(self):
         """
-        Process one camera frame and extract hand data
-        Returns: dict with pose, finger_count, confidence, etc.
+        Process camera frame and return hand data
+        Returns: dict with pose info or None
         """
         if self.simulation_mode:
             return None
         
         ret, frame = self.cap.read()
-        if not ret:
+        if not ret or frame is None:
             return None
         
         # Flip for mirror effect
         frame = cv2.flip(frame, 1)
-        
-        # Get frame dimensions
         height, width, _ = frame.shape
         
-        # Convert to RGB
+        # Convert to RGB for MediaPipe
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        
-        # Process with MediaPipe
         results = self.hands.process(rgb_frame)
         
         if results.multi_hand_landmarks:
             hand_landmarks = results.multi_hand_landmarks[0]
             landmarks = hand_landmarks.landmark
             
-            # Count fingers
+            # Count fingers and classify
             finger_count = self.count_fingers(landmarks)
-            
-            # Classify pose
             pose = self.classify_pose(finger_count)
-            
-            # Calculate finger distance for playback speed (pass image dimensions)
-            finger_distance = self.get_finger_distance(landmarks, width, height)
-            
-            # Check if gesture held long enough
             gesture_confirmed = self.check_gesture_hold(pose)
             
-            # Draw landmarks on frame (for debugging)
+            # Detect peace sign for scratching
+            peace_detected = self.detect_peace_sign(landmarks, finger_count)
+            
+            # Draw landmarks on frame
             self.mp_draw.draw_landmarks(
                 frame, hand_landmarks, self.mp_hands.HAND_CONNECTIONS
             )
             
-            # Get thumb and index finger positions for visual feedback
-            thumb_tip = landmarks[4]
-            index_tip = landmarks[8]
-            thumbX = int(thumb_tip.x * width)
-            thumbY = int(thumb_tip.y * height)
-            indexX = int(index_tip.x * width)
-            indexY = int(index_tip.y * height)
-            
-            # Draw circles on thumb and index finger
-            cv2.circle(frame, (thumbX, thumbY), 15, (255, 0, 255), cv2.FILLED)
-            cv2.circle(frame, (indexX, indexY), 15, (255, 0, 255), cv2.FILLED)
-            
-            # Draw line between thumb and index
-            cv2.line(frame, (thumbX, thumbY), (indexX, indexY), (255, 0, 255), 3)
-            
-            # Calculate center point and distance for display
-            cx, cy = (thumbX + indexX) // 2, (thumbY + indexY) // 2
-            pixel_distance = math.hypot(indexX - thumbX, indexY - thumbY)
-            
-            # Display info on frame
+            # Add text overlay
             cv2.putText(frame, f"Pose: {pose}", (10, 30),
                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             cv2.putText(frame, f"Fingers: {finger_count}", (10, 70),
                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(frame, f"Distance: {int(pixel_distance)}px", (10, 150),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 2)
-            cv2.putText(frame, f"Speed: {finger_distance:.2f}", (10, 190),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 2)
+            cv2.putText(frame, f"Distance: {hand_distance:.2f}", (10, 190),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
+            
+            # Show scratch intensity
+            if scratch_data['should_scratch']:
+                scratch_text = "SCRATCHING!"
+                cv2.putText(frame, scratch_text, (10, 230),
+                           cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 3)
             
             if self.gesture_start_time:
                 hold_time = time.time() - self.gesture_start_time
                 cv2.putText(frame, f"Hold: {hold_time:.1f}s", (10, 110),
                            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
             
-            # Show frame (only if not headless)
+            if gesture_confirmed:
+                cv2.putText(frame, "THEME CHANGE!", (10, 120),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 3)
+            
+            # Show peace sign detection
+            if peace_detected:
+                cv2.putText(frame, "PEACE SIGN!", (10, 150),
+                           cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 3)
+            
+            # Save frame for web streaming
+            self.last_frame = frame.copy()
+            
+            # Show window (only if not headless)
             if not self.headless:
                 try:
                     cv2.imshow('Hand Tracking', frame)
                     cv2.waitKey(1)
                 except:
-                    pass  # Display error
+                    pass
             
             return {
                 'pose': pose,
                 'finger_count': finger_count,
-                'finger_distance': finger_distance,
                 'gesture_confirmed': gesture_confirmed,
-                'confidence': 1.0,
+                'peace_detected': peace_detected,
                 'timestamp': time.time()
             }
-        else:
-            # No hand detected
+        
+        # No hand detected - save plain frame
+        self.last_frame = frame.copy()
+        
             if not self.headless:
                 try:
                     cv2.imshow('Hand Tracking', frame)
                     cv2.waitKey(1)
-                except:
-                    pass  # Display error
-            return None
-    
-    def get_data(self):
-        """
-        Get current hand tracking data
-        """
-        return self.process_frame()
+            except:
+                pass
+        
+        return None
     
     def cleanup(self):
         """Release camera resources"""
-        if not self.simulation_mode:
-            if hasattr(self, 'cap'):
-                self.cap.release()
-            if not self.headless:
-                try:
-                    cv2.destroyAllWindows()
-                except:
-                    pass
-
-
-class HandTrackingSimulator:
-    """
-    Keyboard simulator for testing without camera
-    """
-    def __init__(self):
-        self.pending_pose = None
-        self.finger_count = 0
-        print("\nMediaPipe Simulator Active")
-        print("Number keys 0-5: Set finger count")
-        print("P: Palm (play)")
-        print("F: Fist (resume)")
-    
-    def inject_pose(self, pose, finger_count):
-        """Inject a pose for simulation"""
-        self.pending_pose = pose
-        self.finger_count = finger_count
-    
-    def get_data(self):
-        """Get simulated hand data"""
-        if self.pending_pose:
-            data = {
-                'pose': self.pending_pose,
-                'finger_count': self.finger_count,
-                'finger_distance': 0.5,
-                'gesture_confirmed': True,  # Instant confirmation in sim
-                'confidence': 1.0,
-                'timestamp': time.time()
-            }
-            self.pending_pose = None
-            return data
-        return None
+        if not self.simulation_mode and hasattr(self, 'cap'):
+            self.cap.release()
+            try:
+                cv2.destroyAllWindows()
+            except:
+                pass
 
 
 if __name__ == "__main__":
-    # Test mode
-    print("MediaPipe Hand Tracking Test Mode")
-    print("=" * 40)
+    print("Hand Tracking Test")
+    print("=" * 50)
+    print("Show gestures:")
+    print("  Open Palm (5 fingers) → Light theme")
+    print("  Closed Fist (0 fingers) → Dark theme")
+    print("Hold gesture for 2 seconds to confirm")
+    print("Press Ctrl+C to quit")
+    print("=" * 50)
     
-    tracker = HandTracker(simulation_mode=not MEDIAPIPE_AVAILABLE)
+    tracker = HandTracker(headless=False)
     
     if tracker.simulation_mode:
-        print("\nSimulation Mode - Number keys to simulate:")
-        print("  0: Fist (resume)")
-        print("  1: One finger (track 1)")
-        print("  2: Peace sign (effect toggle)")
-        print("  3: Three fingers")
-        print("  4: Four fingers")
-        print("  5: Palm (play)")
-        print("  Q: Quit")
-        print()
-        
-        import sys
-        import tty
-        import termios
-        
-        def get_key():
-            fd = sys.stdin.fileno()
-            old_settings = termios.tcgetattr(fd)
-            try:
-                tty.setraw(fd)
-                ch = sys.stdin.read(1)
-            finally:
-                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-            return ch
-        
-        try:
-            while True:
-                key = get_key()
-                
-                if key.isdigit():
-                    count = int(key)
-                    if count == 5:
-                        print("PALM - (5 fingers) Play")
-                    elif count == 0:
-                        print("FIST - (0 fingers) Resume")
-                    elif count == 1:
-                        print("ONE - (1 finger)")
-                    elif count == 2:
-                        print("PEACE - (2 fingers)")
-                    elif count == 3:
-                        print("THREE - (3 fingers)")
-                    elif count == 4:
-                        print("FOUR - (4 fingers)")
-                
-                elif key.lower() == 'q':
-                    print("Quitting...")
-                    break
-                
-                time.sleep(0.1)
-        
-        except KeyboardInterrupt:
-            print("\nStopped")
-    
+        print("\nCamera not available")
     else:
-        # Real camera mode
-        print("Monitoring camera... Show hand gestures (Ctrl+C to stop)")
-        print("Hold gesture for 3 seconds to confirm")
         try:
             while True:
                 data = tracker.get_data()
                 if data and data['gesture_confirmed']:
-                    print(f"[OK] Confirmed: {data['pose']} ({data['finger_count']} fingers)")
-                
+                    print(f"✓ Confirmed: {data['pose'].upper()} ({data['finger_count']} fingers)")
                 time.sleep(0.1)
-        
         except KeyboardInterrupt:
             print("\nStopped")
         finally:

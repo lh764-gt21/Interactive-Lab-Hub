@@ -1,7 +1,7 @@
 """
 APDS Gesture Module
 Handles APDS-9960 gesture sensor for swipe detection
-Owner:
+Owner: Charlotte Lin (hl2575), Zoe Tseng (yzt2)
 """
 
 import time
@@ -27,20 +27,23 @@ class APDSGesture:
         self.last_gesture = None
         self.last_proximity = 0
         
+        print(f"[APDS] APDS_AVAILABLE: {APDS_AVAILABLE}, simulation_mode param: {simulation_mode}")
+        
         if not self.simulation_mode:
             try:
                 i2c = busio.I2C(board.SCL, board.SDA)
                 self.sensor = APDS9960(i2c)
                 self.sensor.enable_gesture = True
                 self.sensor.enable_proximity = True
-                print("APDS sensor initialized successfully")
+                print("[APDS] Sensor initialized successfully in HARDWARE mode")
+                print(f"[APDS] Gesture enabled: {self.sensor.enable_gesture}")
             except Exception as e:
-                print(f"Failed to initialize APDS sensor: {e}")
-                print("Falling back to simulation mode")
+                print(f"[APDS] Failed to initialize sensor: {e}")
+                print("[APDS] Falling back to simulation mode")
                 self.simulation_mode = True
         else:
             self.sensor = None
-            print("APDS running in simulation mode")
+            print("[APDS] Running in SIMULATION mode")
     
     def get_gesture(self):
         """
@@ -52,6 +55,9 @@ class APDSGesture:
         
         try:
             gesture = self.sensor.gesture()
+            # Debug: print raw gesture value if non-zero
+            if gesture != 0:
+                print(f"[APDS DEBUG] Raw gesture value: {gesture} (hex: {hex(gesture)})")
             
             if gesture == 0x01:
                 self.last_gesture = 'swipe_up'

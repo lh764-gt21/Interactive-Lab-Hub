@@ -1,5 +1,6 @@
 Adafruit-Blinka==8.64.0
 adafruit-circuitpython-apds9960==3.1.16
+adafruit-circuitpython-mpr121==2.1.25
 adafruit-circuitpython-busdevice==5.2.13
 adafruit-circuitpython-connectionmanager==3.1.5
 adafruit-circuitpython-register==1.10.4
@@ -12,4 +13,8 @@ opencv-python==4.11.0.86
 mediapipe==0.10.18
 pillow==11.3.0
 pygame==2.5.2
-
+lgpio
+vosk==0.3.45
+sounddevice==0.5.3
+flask>=3.0.0
+flask-socketio>=5.0.0

@@ -1,11 +1,12 @@
 """
 Audio Engine Module
 Handles audio playback, track management, volume control, and effects
-Owner: Eva (lh764)
+Owner: Eva Huang (lh764)
 """
 
 import pygame
 import time
+import random
 from pathlib import Path
 
 class AudioEngine:
@@ -32,6 +33,11 @@ class AudioEngine:
         # Speed presets (discrete levels for playback)
         self.speed_presets = [0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5]
         
+        # Scratch state
+        self.scratching = False
+        self.pause_position = 0  # Store position when scratching starts
+        self.was_playing_before_scratch = False
+        
         # Effect sounds
         self.effects = self._load_effects()
         
@@ -56,7 +62,7 @@ class AudioEngine:
         effect_files = {
             "beep": "beep.mp3",      # Track change
             "click": "click.mp3",    # Volume change
-            "whoosh": "whoosh.mp3",  # Effect toggle
+            "swoosh": "swoosh.mp3",  # Theme change
         }
         
         for name, filename in effect_files.items():
@@ -66,6 +72,19 @@ class AudioEngine:
             else:
                 print(f"Warning: Effect file not found: {filepath}")
                 effects[name] = None
+        
+        # Load scratch sounds
+        scratch_sounds = []
+        for i in range(1, 5):  # scratch1.mp3 through scratch4.mp3
+            scratch_file = self.effects_dir / f"scratch{i}.mp3"
+            if scratch_file.exists():
+                scratch_sounds.append(pygame.mixer.Sound(str(scratch_file)))
+            else:
+                print(f"Warning: Scratch file not found: {scratch_file}")
+        
+        if scratch_sounds:
+            effects['scratch_sounds'] = scratch_sounds
+            print(f"Loaded {len(scratch_sounds)} scratch sounds")
         
         return effects
     
@@ -245,6 +264,26 @@ class AudioEngine:
         """Play a sound effect"""
         if effect_name in self.effects and self.effects[effect_name]:
             self.effects[effect_name].play()
+    
+    def play_scratch_effect(self):
+        """
+        Play DJ scratch effect - overlays on top of music without pausing
+        Plays a random scratch sound simultaneously with the music
+        """
+        scratch_sounds = self.effects.get('scratch_sounds', [])
+        if not scratch_sounds:
+            print("[Scratch] No scratch sounds available")
+            return
+        
+        # Play random scratch sound over the music
+        scratch_sound = random.choice(scratch_sounds)
+        scratch_sound.set_volume(self.volume * 1.0)  # Full volume for punch
+        
+        scratch_index = scratch_sounds.index(scratch_sound) + 1
+        print(f"[Scratch] Playing scratch{scratch_index}.mp3 (overlay)")
+        
+        scratch_sound.play()  # Plays on a separate channel, doesn't interrupt music
+    
     
     def get_playback_position(self):
         """Get current playback position in seconds"""
