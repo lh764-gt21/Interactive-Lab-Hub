@@ -231,7 +231,6 @@ class GestureDJCore:
         
         self.running = False
         self.last_pose_processed = None
-        self.currently_scratching = False
         
         # Audio engine
         self.audio = AudioEngine(tracks_dir="tracks", effects_dir="effects")
@@ -346,61 +345,41 @@ class GestureDJCore:
         return None
     
     def handle_hand_gesture(self, hand_data):
-        """Process MediaPipe hand gesture for mood lighting and scratching"""
+        """Process MediaPipe hand gesture for mood lighting or scratch"""
         if not hand_data:
-            # No hand detected - stop scratching if active
-            if self.currently_scratching:
-                self.audio.stop_scratch()
-                self.currently_scratching = False
             return None
         
-        # Check for scratch gesture
-        should_scratch = hand_data.get('should_scratch', False)
+        pose = hand_data.get('pose')
+        gesture_confirmed = hand_data.get('gesture_confirmed', False)
+        pinch_detected = hand_data.get('pinch_detected', False)
         
-        if should_scratch and not self.currently_scratching:
-            # Start scratching
-            self.audio.start_scratch()
-            self.currently_scratching = True
-            return {
-                'type': 'scratch_start',
-                'intensity': hand_data.get('scratch_intensity', 0)
-            }
-        elif not should_scratch and self.currently_scratching:
-            # Stop scratching
-            self.audio.stop_scratch()
-            self.currently_scratching = False
-            return {
-                'type': 'scratch_stop'
-            }
+        # Priority 1: Check for pinch (scratch effect)
+        if pinch_detected:
+            print(f"[Gesture] PINCH detected! Playing scratch effect...")
+            self.audio.play_scratch_effect()
+            return {'type': 'scratch_event', 'action': 'pinch'}
         
-        # Check for theme change gestures (only when not scratching)
-        if not should_scratch:
-            pose = hand_data.get('pose')
-            if not pose:
-                return None
-            
-            gesture_confirmed = hand_data.get('gesture_confirmed', False)
-            
-            if gesture_confirmed and pose != self.last_pose_processed:
-                if pose in ['palm', 'fist']:
-                    print(f"[Gesture] {pose.upper()} confirmed")
+        # Priority 2: Check for theme change gestures (palm/fist)
+        if gesture_confirmed and pose != self.last_pose_processed:
+            if pose in ['palm', 'fist']:
+                print(f"[Gesture] {pose.upper()} confirmed")
+                
+                mood_changed = self.mood_lighting.set_mood_from_gesture(pose)
+                
+                if mood_changed:
+                    # Play swoosh sound effect on theme change
+                    self.audio.play_effect("swoosh")
+                    print(f"[Audio] Playing swoosh effect for theme change")
                     
-                    mood_changed = self.mood_lighting.set_mood_from_gesture(pose)
+                    mood = self.mood_lighting.get_current_mood()
+                    self.last_pose_processed = pose
                     
-                    if mood_changed:
-                        # Play swoosh sound effect on theme change
-                        self.audio.play_effect("swoosh")
-                        print(f"[Audio] Playing swoosh effect for theme change")
-                        
-                        mood = self.mood_lighting.get_current_mood()
-                        self.last_pose_processed = pose
-                        
-                        return {
-                            'type': 'mood_change',
-                            'pose': pose,
-                            'mood': mood,
-                            'mood_state': self.mood_lighting.get_state()
-                        }
+                    return {
+                        'type': 'mood_change',
+                        'pose': pose,
+                        'mood': mood,
+                        'mood_state': self.mood_lighting.get_state()
+                    }
         
         return None
     

@@ -437,19 +437,7 @@
         <source src="/effects/swoosh.mp3" type="audio/mpeg">
     </audio>
     
-    <!-- Scratch sounds -->
-    <audio id="scratch1-sound" preload="auto">
-        <source src="/effects/scratch1.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="scratch2-sound" preload="auto">
-        <source src="/effects/scratch2.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="scratch3-sound" preload="auto">
-        <source src="/effects/scratch3.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="scratch4-sound" preload="auto">
-        <source src="/effects/scratch4.mp3" type="audio/mpeg">
-    </audio>
+    <!-- Scratch sounds are now handled by the backend audio engine -->
 
     <div class="container">
         <header class="header">
@@ -579,120 +567,32 @@
 
         // === DJ SCRATCH EFFECT (FINGER PINCH) ===
         const swooshSound = document.getElementById('swoosh-sound');
-        const scratchSounds = [
-            document.getElementById('scratch1-sound'),
-            document.getElementById('scratch2-sound'),
-            document.getElementById('scratch3-sound'),
-            document.getElementById('scratch4-sound')
-        ];
         const scratchIndicator = document.getElementById('scratch-indicator');
         let lastMoodName = null;
         let lastPinchState = false;
-        let audioInitialized = false;
-
-        // Initialize audio on first user interaction
-        function initializeAudio() {
-            if (!audioInitialized) {
-                console.log('[Audio] Initializing scratch sounds...');
-                scratchSounds.forEach((sound, index) => {
-                    if (sound) {
-                        sound.volume = 0.8;
-                        sound.load();
-                        console.log(`[Audio] ✓ Loaded scratch${index + 1}.mp3`);
-                    } else {
-                        console.error(`[Audio] ✗ scratch${index + 1}-sound element not found!`);
-                    }
-                });
-                audioInitialized = true;
-                console.log('[Audio] ✓ All scratch sounds ready!');
-            }
-        }
-
-        // Initialize immediately and on first click
-        initializeAudio();
-        document.addEventListener('click', initializeAudio, { once: true });
 
         function handleFingerPinch(pinchDetected) {
             const scratchDisplay = document.getElementById('scratch-display');
             
             // Detect pinch trigger (transition from false to true)
             if (pinchDetected && !lastPinchState) {
-                console.log('[Pinch] Finger pinch detected!');
-                
-                // Ensure audio is initialized
-                initializeAudio();
+                console.log('[Pinch] Finger pinch detected! (Scratch overlay on music)');
                 
                 // Update display
                 if (scratchDisplay) {
-                    scratchDisplay.textContent = 'PINCH!';
+                    scratchDisplay.textContent = 'SCRATCH!';
                     setTimeout(() => {
                         scratchDisplay.textContent = '--';
-                    }, 500);
+                    }, 800); // Quick flash for overlay effect
                 }
                 
                 // Show visual indicator
                 scratchIndicator.classList.add('active');
+                scratchIndicator.classList.add('scratching');
                 setTimeout(() => {
                     scratchIndicator.classList.remove('active');
-                }, 300);
-                
-                // Pause music if playing
-                const wasMusicPlaying = audioData.is_playing && !audioData.is_paused;
-                if (wasMusicPlaying) {
-                    console.log('[Pinch] Pausing music...');
-                    fetch('/api/control/pause', { method: 'POST' })
-                        .catch(e => console.log('[Scratch] Pause failed:', e));
-                }
-                
-                // PLAY RANDOM SCRATCH SOUND
-                const randomIndex = Math.floor(Math.random() * 4); // 0-3
-                const scratchSound = scratchSounds[randomIndex];
-                
-                if (!scratchSound) {
-                    console.error(`[Pinch] ✗ ERROR: scratch${randomIndex + 1}-sound is NULL!`);
-                    alert('Scratch sound not found! Check console.');
-                    return;
-                }
-                
-                console.log(`[Pinch] 🎲 Randomly selected: scratch${randomIndex + 1}.mp3`);
-                console.log(`[Pinch] 🎵 Playing at volume 0.9...`);
-                
-                // Stop any currently playing scratch
-                scratchSounds.forEach(s => {
-                    if (s && !s.paused) {
-                        s.pause();
-                        s.currentTime = 0;
-                    }
-                });
-                
-                // Play the selected scratch
-                scratchSound.currentTime = 0;
-                scratchSound.volume = 0.9;
-                scratchSound.playbackRate = 1.0;
-                
-                scratchSound.play()
-                    .then(() => {
-                        console.log(`[Pinch] ✓✓✓ PLAYING scratch${randomIndex + 1}.mp3 ✓✓✓`);
-                    })
-                    .catch(e => {
-                        console.error(`[Pinch] ✗✗✗ FAILED: scratch${randomIndex + 1}.mp3`);
-                        console.error('[Pinch] Error:', e.message, '|', e.name);
-                        if (e.name === 'NotAllowedError') {
-                            console.error('[Pinch] ⚠️ Browser blocked! Click page first!');
-                            alert('Audio blocked! Click anywhere on page first.');
-                        }
-                    });
-                
-                // Resume music after scratch finishes
-                if (wasMusicPlaying) {
-                    scratchSound.onended = () => {
-                        console.log('[Pinch] ✓ Scratch done, resuming music...');
-                        setTimeout(() => {
-                            fetch('/api/control/play', { method: 'POST' })
-                                .catch(e => console.error('[Pinch] Resume failed:', e));
-                        }, 200);
-                    };
-                }
+                    scratchIndicator.classList.remove('scratching');
+                }, 800); // Quick animation
             }
             
             lastPinchState = pinchDetected;
@@ -1318,81 +1218,20 @@
             await fetch('/api/control/volume_down', { method: 'POST' });
         });
 
-        // Test scratch button with detailed debugging
+        // Test scratch button - now tests backend audio
         document.getElementById('test-scratch-btn').addEventListener('click', () => {
-            console.log('='.repeat(60));
-            console.log('[Test] Testing scratch sound system...');
-            console.log('[Test] Available scratch sounds:', scratchSounds.length);
+            console.log('[Test] Testing scratch effect via backend...');
             
-            scratchSounds.forEach((sound, i) => {
-                if (sound) {
-                    console.log(`[Test] scratch${i+1}:`, sound.src, 'readyState:', sound.readyState, 'error:', sound.error);
-                } else {
-                    console.error(`[Test] scratch${i+1}: NULL - element not found!`);
-                }
-            });
-            
-            initializeAudio();
-            
-            const randomIndex = Math.floor(Math.random() * scratchSounds.length);
-            const scratchSound = scratchSounds[randomIndex];
-            
-            if (!scratchSound) {
-                console.error('[Test] ERROR: Scratch sound element not found!');
-                alert('Error: Scratch sound element not found! Check console.');
-                return;
-            }
-            
-            console.log(`[Test] Selected: scratch${randomIndex + 1}.mp3`);
-            console.log(`[Test] Source: ${scratchSound.src}`);
-            console.log(`[Test] Ready state: ${scratchSound.readyState}`);
-            
-            scratchSound.load();
-            scratchSound.currentTime = 0;
-            scratchSound.volume = 0.9;
-            
-            console.log('[Test] Attempting to play...');
-            
-            scratchSound.play()
-                .then(() => {
-                    console.log('[Test] ✓✓✓ SUCCESS - Scratch sound is playing!');
-                    console.log('[Test] Duration:', scratchSound.duration, 'seconds');
+            // Simulate pinch detection to trigger backend scratch
+            fetch('/api/test/scratch', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('[Test] Backend response:', data);
+                    alert('✓ Scratch effect triggered! Listen for sound from backend.');
                 })
                 .catch(e => {
-                    console.error('[Test] ✗✗✗ FAILED -', e.message);
-                    console.error('[Test] Error:', e);
-                    alert('✗ Scratch failed: ' + e.message + '\n\nCheck browser console (F12) for details.');
-                });
-            
-            console.log('='.repeat(60));
-        });
-
-        // Test scratch button
-        document.getElementById('test-scratch-btn').addEventListener('click', () => {
-            console.log('[Test] Testing scratch sound...');
-            initializeAudio();
-            
-            const randomIndex = Math.floor(Math.random() * scratchSounds.length);
-            const scratchSound = scratchSounds[randomIndex];
-            
-            if (!scratchSound) {
-                console.error('[Test] Scratch sound element not found!');
-                alert('Error: Scratch sound not loaded. Check console.');
-                return;
-            }
-            
-            console.log(`[Test] Playing scratch${randomIndex + 1}.mp3`);
-            scratchSound.currentTime = 0;
-            scratchSound.volume = 0.8;
-            
-            scratchSound.play()
-                .then(() => {
-                    console.log('[Test] ✓ Scratch sound playing!');
-                    alert('✓ Scratch sound is working!');
-                })
-                .catch(e => {
-                    console.error('[Test] Play failed:', e);
-                    alert('✗ Scratch sound failed: ' + e.message + '\n\nCheck browser console for details.');
+                    console.error('[Test] Failed to trigger scratch:', e);
+                    alert('✗ Failed to trigger scratch: ' + e.message);
                 });
         });
 

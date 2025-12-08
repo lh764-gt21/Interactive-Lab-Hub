@@ -158,6 +158,17 @@ def serve_effect(filename):
     """Serve effect sound files"""
     return send_from_directory('effects', filename)
 
+@app.route('/api/test/scratch', methods=['POST'])
+def test_scratch():
+    """Test scratch effect - trigger manually"""
+    try:
+        print("[Demo] Test scratch button clicked")
+        dj_core.audio.play_scratch_effect()
+        return jsonify({'status': 'ok', 'message': 'Scratch effect triggered'})
+    except Exception as e:
+        print(f"[Demo] Scratch test error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @app.route('/api/control/<action>', methods=['POST'])
 def control(action):
     """Control audio playback - connected to gesture_dj_core"""
