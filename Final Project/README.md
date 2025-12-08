@@ -231,12 +231,14 @@ Final Project/
 ## Module Descriptions
 
 ### `gesture_dj.py`
-**Owner:** Eva Huang (lh764), Zoe Tseng (yzt2), Charlotte Lin (hl2575)
+> **Owner:** Eva Huang (lh764), Zoe Tseng (yzt2), Charlotte Lin (hl2575)
+
 Main integration module that combines all input methods and controls audio playback.
 
 
 ### `audio_engine.py`
-**Owner:** Eva Huang (lh764)
+> **Owner:** Eva Huang (lh764)
+
 Handles audio playback using pygame:
 - Track loading and switching
 - Play, pause, stop, resume controls
@@ -247,21 +249,24 @@ Handles audio playback using pygame:
 
 
 ### `apds_gesture.py`
-**Owner:** Charlotte Lin (hl2575), Zoe Tseng (yzt2)
+> **Owner:** Charlotte Lin (hl2575), Zoe Tseng (yzt2)
+
 Interface for APDS-9960 gesture sensor:
 - Swipe detection (up, down, left, right)
 - Proximity sensing
 
 
 ### `mpr121_touch.py`
-**Owner:** Zoe Tseng (yzt2), Charlotte Lin (hl2575)
+> **Owner:** Zoe Tseng (yzt2), Charlotte Lin (hl2575)
+
 Interface for MPR121 capacitive touch sensor:
 - 12 touch pads (0-11)
 - Rising edge detection for reliable touch input
 
 
 ### `voice_control.py`
-**Owner:** Zoe Tseng (yzt2), Charlotte Lin (hl2575)
+> **Owner:** Zoe Tseng (yzt2), Charlotte Lin (hl2575)
+
 Offline speech recognition using Vosk:
 - Uses USB microphone
 - Recognizes "play" and "pause" commands
@@ -269,7 +274,8 @@ Offline speech recognition using Vosk:
 
 
 ### `hand_tracker.py`
-**Owner:** Eva Huang (lh764)
+> **Owner:** Eva Huang (lh764)
+
 MediaPipe hand tracking for gesture control:
 - Palm detection (5 fingers) → Light theme
 - Fist detection (0 fingers) → Dark theme
@@ -280,7 +286,8 @@ MediaPipe hand tracking for gesture control:
 
 
 ### `display.py`
-**Owner:** Eva Huang (lh764), Zoe Tseng (yzt2), Charlotte Lin (hl2575)
+> **Owner:** Eva Huang (lh764), Zoe Tseng (yzt2), Charlotte Lin (hl2575)
+
 PiTFT display interface:
 - Shows track number and name
 - Displays volume level
