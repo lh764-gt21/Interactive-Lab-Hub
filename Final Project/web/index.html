@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gesture DJ - Visualizer</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1a2e 100%);
+            min-height: 100vh;
+            font-family: 'Rajdhani', sans-serif;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid rgba(255, 0, 128, 0.3);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-family: 'Orbitron', monospace;
+            font-size: 3rem;
+            background: linear-gradient(90deg, #ff0080, #00ffff, #ff0080);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient 3s ease infinite;
+            text-shadow: 0 0 30px rgba(255, 0, 128, 0.5);
+        }
+
+        @keyframes gradient {
+            0% {
+                background-position: 0% center;
+            }
+
+            50% {
+                background-position: 100% center;
+            }
+
+            100% {
+                background-position: 0% center;
+            }
+        }
+
+        /* Track Info */
+        .track-info {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 0, 128, 0.2);
+        }
+
+        .track-name {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.8rem;
+            color: #00ffff;
+            margin-bottom: 10px;
+        }
+
+        .track-number {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Visualization Modes */
+        .viz-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .viz-tab {
+            padding: 12px 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 0, 128, 0.3);
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            color: #fff;
+        }
+
+        .viz-tab:hover,
+        .viz-tab.active {
+            background: rgba(255, 0, 128, 0.3);
+            border-color: #ff0080;
+            box-shadow: 0 0 20px rgba(255, 0, 128, 0.4);
+        }
+
+        /* Visualization Container */
+        .viz-container {
+            position: relative;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            border: 2px solid rgba(0, 255, 255, 0.2);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .viz-canvas {
+            width: 100%;
+            height: 400px;
+            display: block;
+        }
+
+        .viz-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 0, 128, 0.2);
+        }
+
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 0, 128, 0.5);
+            background: rgba(255, 0, 128, 0.1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 0, 128, 0.3);
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(255, 0, 128, 0.5);
+        }
+
+        .control-btn.play-btn {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #ff0080, #ff4da6);
+            border: none;
+        }
+
+        .control-btn.play-btn:hover {
+            background: linear-gradient(135deg, #ff4da6, #ff0080);
+        }
+
+        /* Volume Slider */
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .volume-slider {
+            width: 100px;
+            height: 8px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #00ffff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        /* Status indicators */
+        .status-bar {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.2rem;
+            color: #00ffff;
+        }
+
+        /* Beat indicator */
+        .beat-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #333;
+            transition: all 0.1s ease;
+        }
+
+        .beat-indicator.active {
+            background: #ff0080;
+            box-shadow: 0 0 30px #ff0080;
+        }
+
+        /* Particles canvas */
+        #particles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="particles-canvas"></canvas>
+
+    <div class="container">
+        <header class="header">
+            <h1>GESTURE DJ</h1>
+        </header>
+
+        <div class="track-info">
+            <div class="track-name" id="track-name">Track 01</div>
+            <div class="track-number" id="track-number">Track 1 / 10</div>
+        </div>
+
+        <div class="viz-tabs">
+            <button class="viz-tab active" data-mode="waveform">WAVEFORM</button>
+            <button class="viz-tab" data-mode="spectrum">SPECTRUM</button>
+            <button class="viz-tab" data-mode="audience">AUDIENCE</button>
+            <button class="viz-tab" data-mode="particles">PARTICLES</button>
+        </div>
+
+        <div class="viz-container">
+            <canvas id="viz-canvas" class="viz-canvas"></canvas>
+            <div class="viz-overlay">
+                <span>BASS: </span><span id="bass-level">0%</span><br>
+                <span>BEAT: </span><span class="beat-indicator" id="beat-indicator"></span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn" id="prev-btn">⏮</button>
+            <button class="control-btn" id="vol-down-btn">🔉</button>
+            <button class="control-btn play-btn" id="play-btn">▶</button>
+            <button class="control-btn" id="vol-up-btn">🔊</button>
+            <button class="control-btn" id="next-btn">⏭</button>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-label">VOLUME</div>
+                <div class="status-value" id="volume-display">75%</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">STATUS</div>
+                <div class="status-value" id="status-display">STOPPED</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">TEMPO</div>
+                <div class="status-value" id="tempo-display">1.0x</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        // Socket connection
+        const socket = io();
+
+        // Canvas setup
+        const canvas = document.getElementById('viz-canvas');
+        const ctx = canvas.getContext('2d');
+        const particlesCanvas = document.getElementById('particles-canvas');
+        const particlesCtx = particlesCanvas.getContext('2d');
+
+        // Resize canvases
+        function resizeCanvases() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            particlesCanvas.width = window.innerWidth;
+            particlesCanvas.height = window.innerHeight;
+        }
+        resizeCanvases();
+        window.addEventListener('resize', resizeCanvases);
+
+        // State
+        let currentMode = 'waveform';
+        let audioData = {
+            waveform: new Array(64).fill(0),
+            frequencies: new Array(32).fill(0),
+            bass_level: 0,
+            mid_level: 0,
+            high_level: 0,
+            beat_detected: false,
+            is_playing: false
+        };
+
+        // Particles for audience mode
+        let particles = [];
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * particlesCanvas.width;
+                this.y = particlesCanvas.height + 10;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = -Math.random() * 5 - 2;
+                this.size = Math.random() * 4 + 2;
+                this.life = 1;
+                this.decay = Math.random() * 0.02 + 0.01;
+                this.hue = Math.random() * 60 + 300; // Pink to cyan
+            }
+
+            update(bassLevel) {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.05; // Gravity
+                this.life -= this.decay;
+
+                // Bass makes particles jump
+                if (bassLevel > 0.6) {
+                    this.vy -= bassLevel * 0.5;
+                }
+
+                if (this.life <= 0 || this.y > particlesCanvas.height) {
+                    this.reset();
+                }
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${this.hue}, 100%, 60%, ${this.life})`;
+                ctx.fill();
+            }
+        }
+
+        // Initialize particles
+        for (let i = 0; i < 100; i++) {
+            particles.push(new Particle());
+        }
+
+        // Visualization modes
+        function drawWaveform() {
+            const { waveform, bass_level, beat_detected } = audioData;
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerY = height / 2;
+
+            // Clear
+            ctx.fillStyle = 'rgba(10, 10, 30, 0.3)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Glow effect on beat
+            if (beat_detected) {
+                ctx.shadowBlur = 30;
+                ctx.shadowColor = '#ff0080';
+            } else {
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#00ffff';
+            }
+
+            // Draw waveform
+            ctx.beginPath();
+            ctx.strokeStyle = beat_detected ? '#ff0080' : '#00ffff';
+            ctx.lineWidth = 3;
+
+            const sliceWidth = width / waveform.length;
+            let x = 0;
+
+            for (let i = 0; i < waveform.length; i++) {
+                const v = waveform[i];
+                const y = centerY + v * (height / 2) * 0.8;
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+                x += sliceWidth;
+            }
+
+            ctx.stroke();
+
+            // Mirror effect
+            ctx.globalAlpha = 0.3;
+            ctx.beginPath();
+            ctx.strokeStyle = '#ff0080';
+            x = 0;
+            for (let i = 0; i < waveform.length; i++) {
+                const v = -waveform[i];
+                const y = centerY + v * (height / 2) * 0.8;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+                x += sliceWidth;
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+
+            ctx.shadowBlur = 0;
+        }
+
+        function drawSpectrum() {
+            const { frequencies, beat_detected } = audioData;
+            const width = canvas.width;
+            const height = canvas.height;
+
+            ctx.fillStyle = 'rgba(10, 10, 30, 0.3)';
+            ctx.fillRect(0, 0, width, height);
+
+            const barWidth = width / frequencies.length - 2;
+            const gap = 2;
+
+            for (let i = 0; i < frequencies.length; i++) {
+                const barHeight = frequencies[i] * height * 0.8;
+                const x = i * (barWidth + gap);
+                const y = height - barHeight;
+
+                // Gradient based on frequency
+                const hue = (i / frequencies.length) * 180 + 270; // Pink to cyan
+                const gradient = ctx.createLinearGradient(x, y, x, height);
+                gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, 1)`);
+                gradient.addColorStop(1, `hsla(${hue}, 100%, 30%, 0.5)`);
+
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x, y, barWidth, barHeight);
+
+                // Glow on beat
+                if (beat_detected && i < 8) {
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#ff0080';
+                    ctx.fillRect(x, y, barWidth, barHeight);
+                    ctx.shadowBlur = 0;
+                }
+            }
+        }
+
+        function drawAudience() {
+            const { frequencies, bass_level, mid_level, high_level, beat_detected } = audioData;
+            const width = canvas.width;
+            const height = canvas.height;
+
+            ctx.fillStyle = 'rgba(10, 10, 30, 0.2)';
+            ctx.fillRect(0, 0, width, height);
+
+            // RGB Bars bouncing with bass
+            const barCount = 16;
+            const barWidth = width / barCount - 4;
+
+            for (let i = 0; i < barCount; i++) {
+                const freq = frequencies[i * 2] || 0;
+                const barHeight = freq * height * 0.7 + bass_level * height * 0.2;
+                const x = i * (barWidth + 4) + 2;
+                const y = height - barHeight;
+
+                // RGB cycling colors
+                const time = Date.now() / 1000;
+                const hue = (i / barCount) * 360 + time * 50;
+
+                // Gradient bar
+                const gradient = ctx.createLinearGradient(x, y, x, height);
+                gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, 1)`);
+                gradient.addColorStop(0.5, `hsla(${hue + 30}, 100%, 50%, 0.8)`);
+                gradient.addColorStop(1, `hsla(${hue + 60}, 100%, 40%, 0.3)`);
+
+                ctx.fillStyle = gradient;
+
+                // Rounded bars
+                ctx.beginPath();
+                ctx.roundRect(x, y, barWidth, barHeight, 5);
+                ctx.fill();
+
+                // Reflection
+                ctx.globalAlpha = 0.2;
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.roundRect(x, height, barWidth, -barHeight * 0.3, 5);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+
+            // Beat flash overlay
+            if (beat_detected) {
+                ctx.fillStyle = 'rgba(255, 0, 128, 0.1)';
+                ctx.fillRect(0, 0, width, height);
+            }
+        }
+
+        function drawParticlesMode() {
+            const { bass_level, beat_detected } = audioData;
+            const width = canvas.width;
+            const height = canvas.height;
+
+            ctx.fillStyle = 'rgba(10, 10, 30, 0.1)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Central pulsing circle
+            const time = Date.now() / 1000;
+            const pulseSize = 50 + bass_level * 100;
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            // Multiple rings
+            for (let i = 0; i < 5; i++) {
+                const ringSize = pulseSize + i * 40 + Math.sin(time * 3 + i) * 20;
+                const hue = 300 + i * 30;
+
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, ringSize, 0, Math.PI * 2);
+                ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${0.5 - i * 0.1})`;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+
+            // Particle burst on beat
+            if (beat_detected) {
+                for (let i = 0; i < 20; i++) {
+                    const angle = (i / 20) * Math.PI * 2;
+                    const dist = 100 + Math.random() * 100;
+                    const px = centerX + Math.cos(angle) * dist;
+                    const py = centerY + Math.sin(angle) * dist;
+
+                    ctx.beginPath();
+                    ctx.arc(px, py, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = `hsla(${300 + Math.random() * 60}, 100%, 60%, 0.8)`;
+                    ctx.fill();
+                }
+            }
+        }
+
+        function updateBackgroundParticles() {
+            particlesCtx.fillStyle = 'rgba(10, 10, 26, 0.1)';
+            particlesCtx.fillRect(0, 0, particlesCanvas.width, particlesCanvas.height);
+
+            if (audioData.is_playing) {
+                particles.forEach(p => {
+                    p.update(audioData.bass_level);
+                    p.draw(particlesCtx);
+                });
+            }
+        }
+
+        // Animation loop
+        function animate() {
+            switch (currentMode) {
+                case 'waveform':
+                    drawWaveform();
+                    break;
+                case 'spectrum':
+                    drawSpectrum();
+                    break;
+                case 'audience':
+                    drawAudience();
+                    break;
+                case 'particles':
+                    drawParticlesMode();
+                    break;
+            }
+
+            updateBackgroundParticles();
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // Socket events
+        socket.on('audio_update', (data) => {
+            audioData = { ...audioData, ...data };
+
+            // Update UI
+            document.getElementById('track-name').textContent = data.track_name || 'Track';
+            document.getElementById('track-number').textContent = `Track ${data.track_number} / ${data.track_total}`;
+            document.getElementById('volume-display').textContent = `${data.volume}%`;
+            document.getElementById('tempo-display').textContent = `${data.tempo?.toFixed(1) || '1.0'}x`;
+            document.getElementById('bass-level').textContent = `${Math.round(data.bass_level * 100)}%`;
+
+            // Status
+            let status = 'STOPPED';
+            if (data.is_playing && !data.is_paused) status = 'PLAYING';
+            else if (data.is_paused) status = 'PAUSED';
+            document.getElementById('status-display').textContent = status;
+
+            // Beat indicator
+            const beatIndicator = document.getElementById('beat-indicator');
+            if (data.beat_detected) {
+                beatIndicator.classList.add('active');
+                setTimeout(() => beatIndicator.classList.remove('active'), 100);
+            }
+
+            // Update play button
+            const playBtn = document.getElementById('play-btn');
+            playBtn.textContent = data.is_playing && !data.is_paused ? '⏸' : '▶';
+        });
+
+        // Tab switching
+        document.querySelectorAll('.viz-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentMode = tab.dataset.mode;
+            });
+        });
+
+        // Control buttons
+        document.getElementById('play-btn').addEventListener('click', () => {
+            const action = audioData.is_playing && !audioData.is_paused ? 'pause' : 'play';
+            fetch(`/api/control/${action}`, { method: 'POST' });
+        });
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            fetch('/api/control/next', { method: 'POST' });
+        });
+
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            fetch('/api/control/prev', { method: 'POST' });
+        });
+
+        document.getElementById('vol-up-btn').addEventListener('click', () => {
+            fetch('/api/control/volume_up', { method: 'POST' });
+        });
+
+        document.getElementById('vol-down-btn').addEventListener('click', () => {
+            fetch('/api/control/volume_down', { method: 'POST' });
+        });
+
+        // Scratch interaction
+        let isDragging = false;
+        let lastX = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const dx = e.clientX - lastX;
+                socket.emit('scratch', { direction: dx });
+                lastX = e.clientX;
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => isDragging = false);
+        canvas.addEventListener('mouseleave', () => isDragging = false);
+    </script>
+</body>
+
+</html>

@@ -29,6 +29,7 @@ class HandTracker:
         simulation_mode: If True, use keyboard instead of camera
         headless: If True, don't show camera window (auto-detect if None)
         """
+        print(f"[HandTracker] MEDIAPIPE_AVAILABLE: {MEDIAPIPE_AVAILABLE}, simulation_mode param: {simulation_mode}")
         self.simulation_mode = simulation_mode or not MEDIAPIPE_AVAILABLE
         
         # Auto-detect headless mode
@@ -55,7 +56,7 @@ class HandTracker:
                 )
                 self.mp_draw = mp.solutions.drawing_utils
                 
-                # Initialize camera
+                # Initialize camera - always use index 0
                 self.cap = cv2.VideoCapture(0)
                 self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
                 self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)

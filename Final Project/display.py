@@ -1,7 +1,6 @@
 """
 Display Module
-Handles PiTFT visual feedback
-Owner:
+Handles PiTFT visual feedback with retro vaporwave aesthetic
 """
 
 import os
@@ -24,6 +23,21 @@ except ImportError:
     except Exception:
         pass
     print("Display libraries not available - running in simulation mode")
+
+
+# Retro color palette (vaporwave/Windows 95 style)
+COLORS = {
+    'pink_frame': (255, 182, 193),      # Light pink window frame
+    'pink_dark': (219, 112, 147),       # Darker pink for borders
+    'teal_bg': (127, 205, 205),         # Teal/turquoise background
+    'teal_dark': (95, 158, 160),        # Darker teal for borders
+    'navy': (25, 25, 60),               # Dark navy for progress bar
+    'pink_progress': (219, 112, 147),   # Pink for remaining progress
+    'white': (255, 255, 255),
+    'black': (0, 0, 0),
+    'text_dark': (40, 40, 80),          # Dark text
+    'button_dark': (25, 25, 60),        # Button color
+}
 
 
 class Display:
@@ -75,16 +89,7 @@ class Display:
                     self.image = Image.new("RGB", (self.width, self.height))
                     self.draw = ImageDraw.Draw(self.image)
                     
-                    # Load fonts
-                    try:
-                        self.font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
-                        self.font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
-                        self.font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
-                    except:
-                        self.font_large = ImageFont.load_default()
-                        self.font_medium = ImageFont.load_default()
-                        self.font_small = ImageFont.load_default()
-                    
+                    self._load_fonts()
                     print("PiTFT display initialized (SPI)")
                     return
                 except Exception as e:
@@ -96,10 +101,23 @@ class Display:
         
         self._init_simulation()
     
+    def _load_fonts(self):
+        """Load fonts for display"""
+        try:
+            self.font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
+            self.font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 14)
+            self.font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 11)
+            self.font_tiny = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 9)
+        except:
+            self.font_large = ImageFont.load_default()
+            self.font_medium = ImageFont.load_default()
+            self.font_small = ImageFont.load_default()
+            self.font_tiny = ImageFont.load_default()
+    
     def _init_simulation(self):
         """Initialize console simulation mode attributes."""
         self.width = 240
-        self.height = 240
+        self.height = 135
     
     def _init_framebuffer(self) -> bool:
         """Initialize direct framebuffer drawing if available."""
@@ -112,7 +130,7 @@ class Display:
             # Read resolution from sysfs if available
             fb_name = os.path.basename(fb)
             sys_base = f"/sys/class/graphics/{fb_name}"
-            width, height = 240, 240
+            width, height = 240, 135
             try:
                 with open(os.path.join(sys_base, "virtual_size"), "r") as f:
                     parts = f.read().strip().split(",")
@@ -128,16 +146,7 @@ class Display:
             self.image = Image.new("RGB", (self.width, self.height))
             self.draw = ImageDraw.Draw(self.image)
             
-            # Load fonts
-            try:
-                self.font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
-                self.font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
-                self.font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
-            except Exception:
-                self.font_large = ImageFont.load_default()
-                self.font_medium = ImageFont.load_default()
-                self.font_small = ImageFont.load_default()
-            
+            self._load_fonts()
             print(f"Framebuffer display initialized on {fb} ({self.width}x{self.height})")
             return True
         except Exception as e:
@@ -160,95 +169,181 @@ class Display:
         """Clear the display with a color"""
         if self.simulation_mode:
             return
-        
         self.draw.rectangle((0, 0, self.width, self.height), outline=0, fill=color)
     
-    def draw_text(self, text, x, y, font=None, color=(255, 255, 255)):
-        """Draw text at position"""
-        if self.simulation_mode:
-            return
+    def _draw_retro_window(self):
+        """Draw the retro window frame"""
+        # Outer pink frame
+        self.draw.rectangle((0, 0, self.width-1, self.height-1), 
+                           fill=COLORS['pink_frame'])
         
-        if font is None:
-            font = self.font_medium
+        # Inner border (darker pink)
+        self.draw.rectangle((3, 3, self.width-4, self.height-4), 
+                           outline=COLORS['pink_dark'], width=2)
         
-        self.draw.text((x, y), text, font=font, fill=color)
+        # Window title bar area (top pink section)
+        self.draw.rectangle((5, 5, self.width-6, 22), 
+                           fill=COLORS['pink_frame'])
+        
+        # Window buttons (minimize, maximize, close) - right side
+        btn_y = 8
+        btn_size = 12
+        btn_spacing = 16
+        
+        # Minimize button (-)
+        btn_x = self.width - 55
+        self.draw.rectangle((btn_x, btn_y, btn_x + btn_size, btn_y + btn_size), 
+                           outline=COLORS['pink_dark'], fill=COLORS['pink_frame'], width=1)
+        self.draw.line((btn_x + 2, btn_y + 6, btn_x + btn_size - 2, btn_y + 6), 
+                      fill=COLORS['pink_dark'], width=1)
+        
+        # Maximize button (□)
+        btn_x += btn_spacing
+        self.draw.rectangle((btn_x, btn_y, btn_x + btn_size, btn_y + btn_size), 
+                           outline=COLORS['pink_dark'], fill=COLORS['pink_frame'], width=1)
+        self.draw.rectangle((btn_x + 2, btn_y + 2, btn_x + btn_size - 2, btn_y + btn_size - 2), 
+                           outline=COLORS['pink_dark'], width=1)
+        
+        # Close button (X)
+        btn_x += btn_spacing
+        self.draw.rectangle((btn_x, btn_y, btn_x + btn_size, btn_y + btn_size), 
+                           outline=COLORS['pink_dark'], fill=COLORS['pink_frame'], width=1)
+        self.draw.line((btn_x + 2, btn_y + 2, btn_x + btn_size - 2, btn_y + btn_size - 2), 
+                      fill=COLORS['pink_dark'], width=1)
+        self.draw.line((btn_x + 2, btn_y + btn_size - 2, btn_x + btn_size - 2, btn_y + 2), 
+                      fill=COLORS['pink_dark'], width=1)
+        
+        # Main content area (teal background)
+        content_top = 25
+        content_bottom = self.height - 35
+        self.draw.rectangle((6, content_top, self.width-7, content_bottom), 
+                           fill=COLORS['teal_bg'])
+        self.draw.rectangle((6, content_top, self.width-7, content_bottom), 
+                           outline=COLORS['teal_dark'], width=1)
+        
+        # Bottom control area (pink)
+        self.draw.rectangle((5, content_bottom + 2, self.width-6, self.height-6), 
+                           fill=COLORS['pink_frame'])
     
-    def draw_progress_bar(self, x, y, width, height, progress, 
-                         bg_color=(50, 50, 50), fg_color=(0, 255, 0)):
-        """
-        Draw a progress bar
-        progress: 0.0 to 1.0
-        """
-        if self.simulation_mode:
-            return
-        
-        # Draw background
+    def _draw_progress_bar_retro(self, x, y, width, height, progress):
+        """Draw retro-style progress bar"""
+        # Background (dark navy)
         self.draw.rectangle((x, y, x + width, y + height), 
-                          outline=fg_color, fill=bg_color)
+                           fill=COLORS['navy'])
         
-        # Draw progress
+        # Progress fill
         fill_width = int(width * progress)
         if fill_width > 0:
             self.draw.rectangle((x, y, x + fill_width, y + height), 
-                              outline=0, fill=fg_color)
+                               fill=COLORS['navy'])
+        
+        # Remaining (pink)
+        if fill_width < width:
+            self.draw.rectangle((x + fill_width, y, x + width, y + height), 
+                               fill=COLORS['pink_progress'])
+        
+        # Slider handle
+        handle_x = x + fill_width - 3
+        handle_x = max(x, min(handle_x, x + width - 6))
+        self.draw.rectangle((handle_x, y - 2, handle_x + 6, y + height + 2), 
+                           fill=COLORS['teal_bg'], outline=COLORS['teal_dark'])
+    
+    def _draw_play_button(self, x, y, size, filled=False):
+        """Draw play triangle button"""
+        points = [(x, y), (x, y + size), (x + size, y + size // 2)]
+        if filled:
+            self.draw.polygon(points, fill=COLORS['button_dark'])
+        else:
+            self.draw.polygon(points, outline=COLORS['button_dark'])
+    
+    def _draw_pause_button(self, x, y, size):
+        """Draw pause button (two bars)"""
+        bar_width = size // 4
+        self.draw.rectangle((x, y, x + bar_width, y + size), fill=COLORS['button_dark'])
+        self.draw.rectangle((x + size - bar_width, y, x + size, y + size), fill=COLORS['button_dark'])
+    
+    def _draw_next_button(self, x, y, size):
+        """Draw next/skip button"""
+        # Two triangles
+        half = size // 2
+        points1 = [(x, y), (x, y + size), (x + half, y + half)]
+        points2 = [(x + half, y), (x + half, y + size), (x + size, y + half)]
+        self.draw.polygon(points1, fill=COLORS['button_dark'])
+        self.draw.polygon(points2, fill=COLORS['button_dark'])
+    
+    def _draw_volume_bars(self, x, y, level):
+        """Draw volume indicator bars"""
+        bar_width = 3
+        bar_spacing = 5
+        max_bars = 5
+        active_bars = int(level / 100 * max_bars)
+        
+        for i in range(max_bars):
+            bar_height = 8 + i * 3
+            bar_y = y + 20 - bar_height
+            color = COLORS['button_dark'] if i < active_bars else COLORS['pink_dark']
+            self.draw.rectangle((x + i * bar_spacing, bar_y, 
+                                x + i * bar_spacing + bar_width, y + 20), 
+                               fill=color)
     
     def update_dj_display(self, state):
         """
-        Update display with DJ state
+        Update display with DJ state in retro style
         state: dict from audio_engine.get_state()
         """
         if self.simulation_mode:
             self._print_console_display(state)
             return
         
-        # Clear screen
-        self.clear((0, 0, 0))
+        # Draw retro window frame
+        self._draw_retro_window()
         
-        # Track info (compact for 240x135 landscape display)
-        track_text = f"TRK {state['track_number']}/{state['track_total']}"
-        self.draw_text(track_text, 5, 5, self.font_medium, (255, 255, 255))
+        # Track info in content area
+        content_top = 30
         
-        track_name = state['track_name'][:15]  # Truncate long names
-        self.draw_text(track_name, 5, 30, self.font_small, (200, 200, 255))
+        # Track number and name
+        track_text = f"TRACK {state['track_number']}/{state['track_total']}"
+        self.draw.text((15, content_top), track_text, 
+                      font=self.font_medium, fill=COLORS['text_dark'])
         
-        # Progress bar (real-time from audio engine)
-        progress = state.get('progress', 0.0)
-        self.draw_progress_bar(5, 50, 230, 10, progress)
+        track_name = state['track_name'][:18]
+        self.draw.text((15, content_top + 18), track_name, 
+                      font=self.font_small, fill=COLORS['text_dark'])
         
-        # Playback state
+        # Status icon in center
+        status_x = self.width // 2 - 10
+        status_y = content_top + 35
+        
         if state['is_playing'] and not state['is_paused']:
-            status = ">PLAY"
-            status_color = (0, 255, 0)
+            # Show play icon or "playing" indicator
+            self._draw_play_button(status_x, status_y, 20, filled=True)
         elif state['is_paused']:
-            status = "||PAUSE"
-            status_color = (255, 255, 0)
+            # Show pause icon
+            self._draw_pause_button(status_x, status_y, 20)
         else:
-            status = "[]STOP"
-            status_color = (255, 0, 0)
+            # Show stop (square)
+            self.draw.rectangle((status_x, status_y, status_x + 20, status_y + 20), 
+                               fill=COLORS['button_dark'])
         
-        self.draw_text(status, 5, 70, self.font_small, status_color)
+        # Progress bar
+        progress = state.get('progress', 0.5)
+        bar_y = self.height - 33
+        self._draw_progress_bar_retro(8, bar_y, self.width - 16, 8, progress)
         
-        # Volume and Speed on same line (compact)
-        volume_text = f"Vol:{state['volume']}%"
-        self.draw_text(volume_text, 5, 90, self.font_small, (255, 200, 0))
+        # Bottom controls area
+        ctrl_y = self.height - 22
         
-        # Playback Speed (color coded) - right side
-        tempo_text = f"Spd:{state['tempo']:.1f}x"
-        if state['tempo'] < 1.0:
-            tempo_color = (0, 255, 0)  # Green for slow
-        elif state['tempo'] == 1.0:
-            tempo_color = (255, 255, 255)  # White for normal
-        elif state['tempo'] < 2.0:
-            tempo_color = (255, 255, 0)  # Yellow for fast
-        else:
-            tempo_color = (255, 100, 0)  # Orange/red for very fast
-        self.draw_text(tempo_text, 120, 90, self.font_small, tempo_color)
+        # Play button
+        self._draw_play_button(15, ctrl_y, 14, filled=True)
         
-        # Effects on bottom line
-        if state['bass_boost']:
-            self.draw_text("[BASS]", 5, 110, self.font_small, (255, 100, 255))
-        if state.get('reverb'):
-            self.draw_text("[REVERB]", 90, 110, self.font_small, (100, 255, 255))
+        # Pause button
+        self._draw_pause_button(35, ctrl_y, 14)
+        
+        # Next button
+        self._draw_next_button(55, ctrl_y, 14)
+        
+        # Volume bars on right
+        self._draw_volume_bars(self.width - 35, ctrl_y - 5, state['volume'])
         
         # Display the image
         if hasattr(self, "disp"):
@@ -264,7 +359,7 @@ class Display:
         
         # Progress bar - use ASCII only
         bar_length = 40
-        filled = int(bar_length * 0.5)  # Placeholder
+        filled = int(bar_length * state.get('progress', 0.5))
         bar = "#" * filled + "-" * (bar_length - filled)
         print(f"  [{bar}]")
         
@@ -280,33 +375,32 @@ class Display:
         
         # Playback Speed
         print(f"  Speed: {state['tempo']:.1f}x")
-        
-        # Effects
-        effects = []
-        if state['bass_boost']:
-            effects.append("BASS")
-        if state.get('reverb'):
-            effects.append("REVERB")
-        
-        if effects:
-            print(f"  Effects: {', '.join(effects)}")
-        
         print("=" * 50)
     
-    def show_message(self, message, color=(255, 255, 255)):
-        """Show a centered message on screen"""
+    def show_message(self, message, color=None):
+        """Show a centered message on screen with retro style"""
         if self.simulation_mode:
             print(f"\n>>> {message} <<<\n")
             return
         
-        self.clear((0, 0, 0))
+        # Draw retro window
+        self._draw_retro_window()
         
-        # Center the text (approximate)
-        text_width = len(message) * 12  # Rough estimate
+        # Center the text in content area
+        content_center_y = (25 + self.height - 35) // 2 + 10
+        
+        # Get text size for centering
+        try:
+            bbox = self.draw.textbbox((0, 0), message, font=self.font_large)
+            text_width = bbox[2] - bbox[0]
+        except:
+            text_width = len(message) * 12
+        
         x = (self.width - text_width) // 2
-        y = self.height // 2 - 20
         
-        self.draw_text(message, x, y, self.font_large, color)
+        self.draw.text((x, content_center_y), message, 
+                      font=self.font_large, fill=COLORS['text_dark'])
+        
         if hasattr(self, "disp"):
             self.disp.image(self.image, self.rotation)
         elif self._framebuffer_path:
@@ -315,7 +409,7 @@ class Display:
     def cleanup(self):
         """Clean up display resources"""
         if not self.simulation_mode:
-            self.clear((0, 0, 0))
+            self.clear(COLORS['pink_frame'])
             if hasattr(self, "disp"):
                 self.disp.image(self.image, self.rotation)
             elif self._framebuffer_path:
@@ -329,36 +423,23 @@ if __name__ == "__main__":
     simulation = '--sim' in sys.argv or '--simulation' in sys.argv
     
     print("=" * 50)
-    print("Mini PiTFT Display Test (135x240)")
+    print("Retro Display Test")
     print("=" * 50)
     
     if simulation:
         print("Running in SIMULATION mode (console only)")
     else:
         print("Running in HARDWARE mode (trying PiTFT)")
-        print("Note: Stop piscreen.service first!")
     
     print()
     
     display = Display(simulation_mode=simulation)
     
-    if not display.simulation_mode:
-        print("[OK] Display initialized successfully!")
-        print(f"    Size: {display.width}x{display.height}")
-        if hasattr(display, 'rotation'):
-            print(f"    Rotation: {display.rotation} degrees")
-    else:
-        print("[INFO] Running in simulation mode")
-    
     try:
-        # Test 1: Color splash
-        print("\nTest 1: Color splash messages (6 sec)")
-        display.show_message("GESTURE DJ", color=(0, 255, 0))
-        time.sleep(2)
-        display.show_message("HELLO!", color=(255, 0, 255))
-        time.sleep(2)
-        display.show_message("READY", color=(0, 255, 255))
-        time.sleep(2)
+        # Test 1: Welcome message
+        print("\nTest 1: Welcome message (3 sec)")
+        display.show_message("GESTURE DJ")
+        time.sleep(3)
         
         # Test 2: DJ UI - Playing
         print("\nTest 2: DJ UI - PLAYING (3 sec)")
@@ -372,19 +453,17 @@ if __name__ == "__main__":
             "tempo": 1.0,
             "bass_boost": False,
             "reverb": False,
-            "position": 0.0
+            "progress": 0.65
         }
         display.update_dj_display(test_state)
         time.sleep(3)
         
-        # Test 3: DJ UI - Paused with effects
-        print("\nTest 3: DJ UI - PAUSED + EFFECTS (3 sec)")
-        test_state["track_number"] = 5
-        test_state["track_name"] = "Track 05"
+        # Test 3: DJ UI - Paused
+        print("\nTest 3: DJ UI - PAUSED (3 sec)")
         test_state["is_paused"] = True
-        test_state["bass_boost"] = True
-        test_state["reverb"] = True
-        test_state["volume"] = 90
+        test_state["track_number"] = 5
+        test_state["track_name"] = "Summer Vibes"
+        test_state["progress"] = 0.3
         display.update_dj_display(test_state)
         time.sleep(3)
         
@@ -392,21 +471,18 @@ if __name__ == "__main__":
         print("\nTest 4: DJ UI - STOPPED (3 sec)")
         test_state["is_playing"] = False
         test_state["is_paused"] = False
-        test_state["bass_boost"] = False
-        test_state["reverb"] = False
+        test_state["progress"] = 0.0
         display.update_dj_display(test_state)
         time.sleep(3)
         
         # Test 5: Final message
-        print("\nTest 5: Final success message (2 sec)")
-        display.show_message("TEST OK!", color=(0, 255, 0))
+        print("\nTest 5: Final message (2 sec)")
+        display.show_message("READY!")
         time.sleep(2)
         
     except KeyboardInterrupt:
-        print("\n\nTest interrupted by user (Ctrl+C)")
+        print("\n\nTest interrupted (Ctrl+C)")
     
     finally:
         display.cleanup()
-        print("\n" + "=" * 50)
-        print("Display test complete!")
-        print("=" * 50)
+        print("\nDisplay test complete!")
