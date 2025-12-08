@@ -27,6 +27,18 @@ print("="*60)
 dj_core = GestureDJCore(enable_camera=True, headless_camera=True)
 print("="*60)
 
+
+def on_voice_command(command):
+    """Callback for voice commands - connected to gesture_dj_core"""
+    try:
+        result = dj_core.handle_voice_command(command)
+        if result:
+            print(f"[Demo] Voice command executed: {result}")
+            # Broadcast state update to clients
+            socketio.emit('audio_update', dj_core.get_state())
+    except Exception as e:
+        print(f"[Demo] Voice command error: {e}")
+
 def generate_camera_frames():
     """Stream camera from core tracker with optimized performance"""
     if not dj_core.hand_tracker or dj_core.hand_tracker.simulation_mode:
@@ -98,7 +110,7 @@ def generate_fake_audio_data():
     }
 
 def process_gestures():
-    """Background thread to process gestures from core"""
+    """Background thread to process MediaPipe hand gestures from core"""
     while True:
         try:
             # Get hand gesture data
@@ -107,12 +119,55 @@ def process_gestures():
                 if hand_data:
                     # Handle mood change gestures
                     result = dj_core.handle_hand_gesture(hand_data)
-                    if result and result.get('type') == 'mood_change':
-                        print(f"[Demo] Mood changed: {result['mood']['name']}")
+                    if result:
+                        if result.get('type') == 'mood_change':
+                            print(f"[Demo] Mood changed: {result['mood']['name']}")
+                        elif result.get('type') == 'scratch_event':
+                            print(f"[Demo] Scratch effect triggered!")
+                        # Broadcast state update
+                        socketio.emit('audio_update', dj_core.get_state())
             
             time.sleep(0.05)
         except Exception as e:
             print(f"[Demo] Gesture processing error: {e}")
+            time.sleep(0.1)
+
+
+def process_apds_gestures():
+    """Background thread to process APDS-9960 swipe gestures"""
+    while True:
+        try:
+            if dj_core.apds and not dj_core.apds.simulation_mode:
+                gesture = dj_core.apds.get_gesture()
+                if gesture:
+                    result = dj_core.handle_apds_gesture(gesture)
+                    if result:
+                        print(f"[Demo] APDS gesture: {gesture} -> {result}")
+                        # Broadcast state update to clients
+                        socketio.emit('audio_update', dj_core.get_state())
+            
+            time.sleep(0.05)
+        except Exception as e:
+            print(f"[Demo] APDS gesture error: {e}")
+            time.sleep(0.1)
+
+
+def process_mpr121_touch():
+    """Background thread to process MPR121 capacitive touch"""
+    while True:
+        try:
+            if dj_core.mpr121 and dj_core.mpr121.available:
+                action = dj_core.mpr121.get_action()
+                if action:
+                    result = dj_core.handle_mpr121_touch(action)
+                    if result:
+                        print(f"[Demo] MPR121 touch: {action} -> {result}")
+                        # Broadcast state update to clients
+                        socketio.emit('audio_update', dj_core.get_state())
+            
+            time.sleep(0.05)
+        except Exception as e:
+            print(f"[Demo] MPR121 touch error: {e}")
             time.sleep(0.1)
 
 def broadcast_audio_data():
@@ -154,6 +209,26 @@ def hand_status():
     if tracker and not tracker.simulation_mode:
         return jsonify({"tracking": True, "available": True})
     return jsonify({"tracking": False, "available": False})
+
+
+@app.route('/api/sensors')
+def sensor_status():
+    """Get status of all sensors"""
+    return jsonify({
+        'voice': {
+            'available': dj_core.voice.available if dj_core.voice else False,
+            'running': dj_core.voice.running if dj_core.voice else False
+        },
+        'apds': {
+            'available': not dj_core.apds.simulation_mode if dj_core.apds else False
+        },
+        'mpr121': {
+            'available': dj_core.mpr121.available if dj_core.mpr121 else False
+        },
+        'hand_tracker': {
+            'available': dj_core.hand_tracker is not None and not dj_core.hand_tracker.simulation_mode
+        }
+    })
 
 
 @app.route('/effects/<path:filename>')
@@ -226,21 +301,51 @@ if __name__ == '__main__':
     print("="*60)
     print("\nStarting demo with:")
     print("  - MediaPipe hand tracking (via core)")
+    print("  - Voice control (Vosk speech recognition)")
+    print("  - APDS-9960 gesture sensor (swipes)")
+    print("  - MPR121 capacitive touch (track selection)")
     print("  - Full web visualizations")
     print("  - Camera feed streaming")
     print("\nOpen browser to: http://localhost:5000")
-    print("\nGestures:")
-    print("  Open Palm (5 fingers) -> Light theme")
-    print("  Closed Fist (0 fingers) -> Dark theme")
+    print("\nControls:")
+    print("  Voice: Say 'play' or 'pause'")
+    print("  APDS Gestures:")
+    print("    - Swipe Left/Right -> Previous/Next track")
+    print("    - Swipe Up/Down -> Volume up/down")
+    print("  MPR121 Touch Pads:")
+    print("    - Pads 0-9 -> Select tracks 1-10")
+    print("    - Pad 10 -> Play/Pause")
+    print("    - Pad 11 -> Stop")
+    print("  Hand Gestures (Camera):")
+    print("    - Open Palm (5 fingers) held -> Light theme")
+    print("    - Closed Fist (0 fingers) held -> Dark theme")
+    print("    - Peace Sign (2 fingers) -> Scratch effect")
     print("\nPress Ctrl+C to quit")
     print("="*60 + "\n")
+    
+    # Start voice control (if available)
+    if dj_core.voice and dj_core.voice.available:
+        dj_core.voice.start(callback=on_voice_command)
+        print("[Demo] Voice control started - say 'play' or 'pause'")
+    else:
+        print("[Demo] Voice control not available")
     
     # Start background threads
     gesture_thread = threading.Thread(target=process_gestures, daemon=True)
     gesture_thread.start()
+    print("[Demo] MediaPipe hand gesture thread started")
+    
+    apds_thread = threading.Thread(target=process_apds_gestures, daemon=True)
+    apds_thread.start()
+    print("[Demo] APDS gesture thread started")
+    
+    mpr121_thread = threading.Thread(target=process_mpr121_touch, daemon=True)
+    mpr121_thread.start()
+    print("[Demo] MPR121 touch thread started")
     
     broadcast_thread = threading.Thread(target=broadcast_audio_data, daemon=True)
     broadcast_thread.start()
+    print("[Demo] Audio broadcast thread started")
     
     try:
         # Run Flask-SocketIO server
