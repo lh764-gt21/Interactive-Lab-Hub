@@ -7,11 +7,12 @@ A multi-modal DJ controller for Raspberry Pi that uses gesture sensors, touch in
 - **APDS-9960 Gesture Control**: Swipe gestures to navigate tracks and control volume
 - **MPR121 Touch Pads**: Capacitive touch pads to select specific tracks (1-10)
 - **Voice Control**: Say "play" or "pause" to control playback using offline speech recognition
-- **MediaPipe Hand Gestures**: Control mood lighting and effects with hand gestures 👋✨
-  - 5 distinct mood themes (Energetic, Chill, Party, Relaxed, Default)
-  - Real-time mood changes on web UI and OLED display
-  - Effects toggle (bass boost) with fist gesture
-  - Playback speed control via finger distance
+- **MediaPipe Hand Gestures**: Control UI themes and DJ effects with hand gestures 👋✨
+  - Light/Dark theme switching with palm and fist gestures (2.5s hold)
+  - DJ scratch effect triggered by peace sign gesture
+  - Real-time mood changes on web UI with smooth transitions
+  - Swoosh sound feedback on theme changes
+  - Live camera feed in web browser
 - **TFT Display**: Retro vaporwave-style visual feedback on PiTFT display
   - Color-coded mood indicators
   - Gesture feedback with emojis
@@ -94,9 +95,13 @@ tracks/
 Optionally, add sound effects in `effects/`:
 ```
 effects/
-├── beep.mp3    (track change sound)
-├── click.mp3   (volume change sound)
-└── whoosh.mp3  (effect toggle sound)
+├── beep.mp3       (track change sound)
+├── click.mp3      (volume change sound)
+├── swoosh.mp3     (theme change sound)
+├── scratch1.mp3   (DJ scratch effect)
+├── scratch2.mp3   (DJ scratch effect)
+├── scratch3.mp3   (DJ scratch effect)
+└── scratch4.mp3   (DJ scratch effect)
 ```
 
 ### 4. Enable I2C
@@ -145,19 +150,20 @@ Then open `http://<raspberry-pi-ip>:5000` in any browser to see the visualizatio
 | Pad 10   | Play/Pause toggle   |
 | Pad 11   | Stop playback       |
 
-#### MediaPipe Gestures (Light/Dark Theme + Bubbles)
-| Gesture | Type | Action | Effect |
-|---------|------|--------|--------|
-| ✋ OPEN PALM | Hand | Light theme | ☀️ Day time UI (bright) |
-| ✊ CLOSED FIST | Hand | Dark theme | 🌙 Night time UI (dark) |
-| 💨 BLOW | Mouth | Activate bubbles | 💭 30 bubbles for 5 seconds |
+#### MediaPipe Hand Gestures (Camera Required)
+| Gesture | Fingers | Action | Hold Time |
+|---------|---------|--------|-----------|
+| ✋ OPEN PALM | 5 | Light theme (baby blue UI) | 2.5 seconds |
+| ✊ CLOSED FIST | 0 | Dark theme (midnight UI) | 2.5 seconds |
+| ✌️ PEACE SIGN | 2 | DJ scratch effect | Instant |
 
 **Tips:**
-- Hold hand gestures for 2 seconds for confirmation
-- Keep hand 1-2 feet from camera
-- Open mouth wide to blow (triggers bubble effect)
-- Use good lighting for best detection
-- Watch OLED display for visual feedback
+- Hold palm/fist gestures for **2.5 seconds** to change theme
+- Peace sign triggers immediately (no hold required)
+- Keep hand 1-2 feet from camera for best detection
+- Use good lighting for accurate gesture recognition
+- Camera feed visible in web UI (top-right corner)
+- Scratch effect plays random scratch sound over music
 
 #### Voice Commands
 | Command  | Action              |
@@ -200,7 +206,7 @@ Final Project/
 ├── apds_gesture.py     # APDS-9960 gesture sensor interface
 ├── mpr121_touch.py     # MPR121 touch sensor interface
 ├── voice_control.py    # Vosk-based voice recognition
-├── hand_tracker.py     # MediaPipe hand tracking (disabled)
+├── hand_tracker.py     # MediaPipe hand tracking
 ├── display.py          # PiTFT display interface
 ├── requirements.txt    # Python dependencies
 ├── setup.sh            # Setup script
@@ -210,7 +216,11 @@ Final Project/
 └── effects/            # Sound effect files
     ├── beep.mp3
     ├── click.mp3
-    └── whoosh.mp3
+    ├── swoosh.mp3
+    ├── scratch1.mp3
+    ├── scratch2.mp3
+    ├── scratch3.mp3
+    └── scratch4.mp3
 ```
 
 ## Module Descriptions
@@ -222,7 +232,9 @@ Main integration module that combines all input methods and controls audio playb
 Handles audio playback using pygame:
 - Track loading and switching
 - Play, pause, stop, resume controls
-- Volume control
+- Volume control with sound feedback
+- DJ scratch effect (overlays random scratch sound on music)
+- Theme change swoosh sound effect
 - Playback speed adjustment (via mixer frequency)
 
 ### `apds_gesture.py`
@@ -240,6 +252,15 @@ Offline speech recognition using Vosk:
 - Uses USB microphone
 - Recognizes "play" and "pause" commands
 - Runs in background thread
+
+### `hand_tracker.py`
+MediaPipe hand tracking for gesture control:
+- Palm detection (5 fingers) → Light theme
+- Fist detection (0 fingers) → Dark theme
+- Peace sign detection (2 fingers) → DJ scratch
+- 2.5 second hold requirement for theme changes
+- Headless mode support for web streaming
+- Live camera feed with gesture overlays
 
 ### `display.py`
 PiTFT display interface:
