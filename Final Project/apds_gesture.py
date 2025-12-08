@@ -1,7 +1,7 @@
 """
 APDS Gesture Module
 Handles APDS-9960 gesture sensor for swipe detection
-Owner:
+Owner: Charlotte Lin (hl2575), Zoe Tseng (yzt2)
 """
 
 import time

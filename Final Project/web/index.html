@@ -297,7 +297,7 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            width: 240px;
+            width: 500px;
             background: rgba(0, 0, 0, 0.6);
             border-radius: 10px;
             border: 2px solid rgba(0, 255, 255, 0.3);
@@ -452,7 +452,7 @@
         <div class="mood-indicator" id="mood-indicator">
             <div class="mood-name" id="mood-name">Dark Mode</div>
             <div class="mood-description" id="mood-description">Night time theme</div>
-            <div class="gesture-hint">Use hand gestures: ✋ Open Palm = Light | ✊ Closed Fist = Dark (hold 2.5s)</div>
+            <div class="gesture-hint">Use hand gestures: ✋ Open Palm = Light | ✊ Closed Fist = Dark (hold 2.5s) | ✌️ Peace Sign = Scratch</div>
         </div>
 
         <div class="camera-container" id="camera-container">
@@ -565,22 +565,22 @@
             }
         };
 
-        // === DJ SCRATCH EFFECT (FINGER PINCH) ===
+        // === DJ SCRATCH EFFECT (PEACE SIGN ✌️) ===
         const swooshSound = document.getElementById('swoosh-sound');
         const scratchIndicator = document.getElementById('scratch-indicator');
         let lastMoodName = null;
-        let lastPinchState = false;
+        let lastPeaceState = false;
 
-        function handleFingerPinch(pinchDetected) {
+        function handlePeaceSign(peaceDetected) {
             const scratchDisplay = document.getElementById('scratch-display');
             
-            // Detect pinch trigger (transition from false to true)
-            if (pinchDetected && !lastPinchState) {
-                console.log('[Pinch] Finger pinch detected! (Scratch overlay on music)');
+            // Detect peace sign trigger (transition from false to true)
+            if (peaceDetected && !lastPeaceState) {
+                console.log('[Peace] ✌️ Peace sign detected! (Scratch overlay on music)');
                 
                 // Update display
                 if (scratchDisplay) {
-                    scratchDisplay.textContent = 'SCRATCH!';
+                    scratchDisplay.textContent = '✌️ SCRATCH!';
                     setTimeout(() => {
                         scratchDisplay.textContent = '--';
                     }, 800); // Quick flash for overlay effect
@@ -595,7 +595,7 @@
                 }, 800); // Quick animation
             }
             
-            lastPinchState = pinchDetected;
+            lastPeaceState = peaceDetected;
         }
 
         // === ENHANCED MOOD LIGHTING FUNCTION ===
@@ -1161,9 +1161,9 @@
                 activateBubbles();
             }
 
-            // Handle finger pinch for scratching
-            if (data.pinch_detected !== undefined) {
-                handleFingerPinch(data.pinch_detected);
+            // Handle peace sign for scratching
+            if (data.peace_detected !== undefined) {
+                handlePeaceSign(data.peace_detected);
             }
 
             document.getElementById('track-name').textContent = data.track_name || 'Track';

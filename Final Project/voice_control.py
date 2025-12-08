@@ -2,6 +2,8 @@
 Voice Control Module
 Uses Vosk for offline speech recognition to detect "play" and "pause" commands
 Based on Lab 3 speech recognition examples
+
+Owner: Zoe Tseng (yzt2), Charlotte Lin (hl2575)
 """
 
 import os

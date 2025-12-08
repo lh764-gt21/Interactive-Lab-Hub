@@ -1,7 +1,7 @@
 """
 Audio Engine Module
 Handles audio playback, track management, volume control, and effects
-Owner: Eva (lh764)
+Owner: Eva Huang (lh764)
 """
 
 import pygame

@@ -1,7 +1,7 @@
 """
 Mood Lighting System
 Controls visual themes and color schemes for web UI and display
-Owner: Eva Huang
+Owner: Eva Huang (lh764)
 """
 
 import time

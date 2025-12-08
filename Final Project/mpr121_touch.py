@@ -1,6 +1,8 @@
 """
 MPR121 Touch Sensor Module
 Handles capacitive touch input for track selection (1-10)
+
+Owner: Zoe Tseng (yzt2), Charlotte Lin (hl2575)
 """
 
 import time

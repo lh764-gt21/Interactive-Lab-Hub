@@ -1,6 +1,8 @@
 """
 Display Module
 Handles PiTFT visual feedback with retro vaporwave aesthetic
+
+Owner: Eva Huang (lh764), Zoe Tseng (yzt2), Charlotte Lin (hl2575)
 """
 
 import os

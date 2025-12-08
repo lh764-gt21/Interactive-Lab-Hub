@@ -1,7 +1,6 @@
 """
-MediaPipe Hand Tracking Module - Simplified
-Only tracks: Open Palm (5 fingers) and Closed Fist (0 fingers)
-Owner: Zoe (yzt2)
+MediaPipe Hand Tracking Module
+Owner: Eva Huang (lh764)
 """
 
 import time
@@ -39,10 +38,9 @@ class HandTracker:
         
         # Finger pinch detection (thumb + index)
         self.last_pinch_distance = None
-        self.pinch_detected = False
-        self.pinch_cooldown_time = None
-        self.pinch_cooldown_duration = 0.3  # 0.3 seconds between pinches
-        self.is_pinching = False
+        self.peace_detected = False
+        self.peace_cooldown_time = None
+        self.peace_cooldown_duration = 0.5  # 0.5 seconds between peace signs
         
         if not MEDIAPIPE_AVAILABLE:
             self.simulation_mode = True
@@ -78,41 +76,36 @@ class HandTracker:
             print(f"[HandTracker] Failed to initialize: {e}")
             self.simulation_mode = True
     
-    def detect_finger_pinch(self, landmarks):
+    def detect_peace_sign(self, landmarks, finger_count):
         """
-        Detect finger pinch gesture (thumb tip + index finger tip)
-        Much more reliable than snap!
-        Returns: True if pinch just started, False otherwise
+        Detect peace sign gesture (✌️ two fingers up)
+        Returns True if exactly 2 fingers are extended (index + middle)
         """
         if not landmarks:
             return False
-        
-        # Check cooldown
+
         current_time = time.time()
-        if self.pinch_cooldown_time and (current_time - self.pinch_cooldown_time) < self.pinch_cooldown_duration:
+        
+        # Check cooldown to prevent rapid re-triggering
+        if self.peace_cooldown_time and (current_time - self.peace_cooldown_time) < self.peace_cooldown_duration:
             return False
-        
-        # Calculate distance between thumb tip (4) and index finger tip (8)
-        thumb_tip = landmarks[4]
-        index_tip = landmarks[8]
-        
-        dx = thumb_tip.x - index_tip.x
-        dy = thumb_tip.y - index_tip.y
-        dz = thumb_tip.z - index_tip.z
-        
-        distance = (dx**2 + dy**2 + dz**2) ** 0.5
-        
-        # Pinch threshold - fingers are close together
-        pinch_threshold = 0.05  # Very close = pinched
-        
-        was_pinching = self.is_pinching
-        self.is_pinching = distance < pinch_threshold
-        
-        # Detect pinch start (transition from not pinching to pinching)
-        if self.is_pinching and not was_pinching:
-            self.pinch_cooldown_time = current_time
-            print(f"[Pinch] ✓ INSTANT TRIGGER! Distance: {distance:.3f}")
-            return True
+
+        # Peace sign = exactly 2 fingers extended
+        if finger_count == 2:
+            # Verify index and middle fingers are up (landmarks 8 and 12)
+            index_tip = landmarks[8]
+            middle_tip = landmarks[12]
+            index_pip = landmarks[6]
+            middle_pip = landmarks[10]
+            
+            # Both tips should be above their PIP joints
+            index_up = index_tip.y < index_pip.y
+            middle_up = middle_tip.y < middle_pip.y
+            
+            if index_up and middle_up:
+                self.peace_cooldown_time = current_time
+                print(f"[Peace] PEACE SIGN DETECTED!")
+                return True
         
         return False
     
@@ -209,8 +202,8 @@ class HandTracker:
             pose = self.classify_pose(finger_count)
             gesture_confirmed = self.check_gesture_hold(pose)
             
-            # Detect finger pinch for scratching
-            pinch_detected = self.detect_finger_pinch(landmarks)
+            # Detect peace sign for scratching
+            peace_detected = self.detect_peace_sign(landmarks, finger_count)
             
             # Draw landmarks on frame
             self.mp_draw.draw_landmarks(
@@ -240,13 +233,10 @@ class HandTracker:
                 cv2.putText(frame, "THEME CHANGE!", (10, 120),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 3)
             
-            # Show pinch detection
-            if pinch_detected:
-                cv2.putText(frame, "PINCH!", (10, 150),
+            # Show peace sign detection
+            if peace_detected:
+                cv2.putText(frame, "PEACE SIGN!", (10, 150),
                            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 3)
-            elif self.is_pinching:
-                cv2.putText(frame, "Pinching...", (10, 150),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             
             # Save frame for web streaming
             self.last_frame = frame.copy()
@@ -263,8 +253,7 @@ class HandTracker:
                 'pose': pose,
                 'finger_count': finger_count,
                 'gesture_confirmed': gesture_confirmed,
-                'pinch_detected': pinch_detected,
-                'is_pinching': self.is_pinching,
+                'peace_detected': peace_detected,
                 'timestamp': time.time()
             }
         

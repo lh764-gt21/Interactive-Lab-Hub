@@ -1,6 +1,9 @@
 """
 Gesture DJ Demo - Web Interface + Core Logic
 Uses gesture_dj_core.py for all business logic
+
+Owner: Eva Huang (lh764), Zoe Tseng (yzt2), Charlotte Lin (hl2575)
+
 """
 
 from flask import Flask, Response, render_template, jsonify, send_from_directory

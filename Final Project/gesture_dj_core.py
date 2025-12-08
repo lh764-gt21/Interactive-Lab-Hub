@@ -1,7 +1,7 @@
 """
-Gesture DJ Core - Business Logic Only
-Handles audio, gestures, voice control, and mood lighting
-No display or web server logic - that's handled by consumers
+Gesture DJ Core Logic
+Handles audio, gestures, voice control, and mood lighting.
+No display or web server logic.
 """
 
 import time
@@ -24,12 +24,10 @@ class SimpleHandTracker:
         self.simulation_mode = False
         self.last_frame = None
         
-        # Finger pinch detection
-        self.last_pinch_distance = None
-        self.pinch_detected = False
-        self.pinch_cooldown_time = None
-        self.pinch_cooldown_duration = 0.3
-        self.is_pinching = False
+        # Peace sign detection
+        self.peace_detected = False
+        self.peace_cooldown_time = None
+        self.peace_cooldown_duration = 0.5
         
         try:
             self.mp_hands = mp.solutions.hands
@@ -63,31 +61,29 @@ class SimpleHandTracker:
             print(f"[HandTracker] Failed to initialize: {e}")
             self.simulation_mode = True
     
-    def detect_finger_pinch(self, landmarks):
-        """Detect finger pinch (thumb + index)"""
+    def detect_peace_sign(self, landmarks, finger_count):
+        """Detect peace sign gesture (✌️ two fingers up)"""
         if not landmarks:
             return False
         
         current_time = time.time()
-        if self.pinch_cooldown_time and (current_time - self.pinch_cooldown_time) < self.pinch_cooldown_duration:
+        if self.peace_cooldown_time and (current_time - self.peace_cooldown_time) < self.peace_cooldown_duration:
             return False
         
-        thumb_tip = landmarks[4]
-        index_tip = landmarks[8]
-        
-        dx = thumb_tip.x - index_tip.x
-        dy = thumb_tip.y - index_tip.y
-        dz = thumb_tip.z - index_tip.z
-        
-        distance = (dx**2 + dy**2 + dz**2) ** 0.5
-        
-        pinch_threshold = 0.05
-        was_pinching = self.is_pinching
-        self.is_pinching = distance < pinch_threshold
-        
-        if self.is_pinching and not was_pinching:
-            self.pinch_cooldown_time = current_time
-            return True
+        # Peace sign = exactly 2 fingers extended
+        if finger_count == 2:
+            # Verify index and middle fingers are up
+            index_tip = landmarks[8]
+            middle_tip = landmarks[12]
+            index_pip = landmarks[6]
+            middle_pip = landmarks[10]
+            
+            index_up = index_tip.y < index_pip.y
+            middle_up = middle_tip.y < middle_pip.y
+            
+            if index_up and middle_up:
+                self.peace_cooldown_time = current_time
+                return True
         
         return False
     
@@ -149,7 +145,7 @@ class SimpleHandTracker:
             finger_count = self.count_fingers(landmarks)
             pose = self.classify_pose(finger_count)
             gesture_confirmed = self.check_gesture_hold(pose)
-            pinch_detected = self.detect_finger_pinch(landmarks)
+            peace_detected = self.detect_peace_sign(landmarks, finger_count)
             
             # ALWAYS draw landmarks (for streaming)
             height, width, _ = frame.shape
@@ -160,12 +156,9 @@ class SimpleHandTracker:
             cv2.putText(frame, f"Fingers: {finger_count}", (10, 60),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             
-            if pinch_detected:
-                cv2.putText(frame, "PINCH!", (10, 150),
+            if peace_detected:
+                cv2.putText(frame, "PEACE SIGN!", (10, 150),
                            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 3)
-            elif self.is_pinching:
-                cv2.putText(frame, "Pinching...", (10, 150),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             
             if self.gesture_start_time:
                 hold_time = time.time() - self.gesture_start_time
@@ -191,8 +184,7 @@ class SimpleHandTracker:
                 'pose': pose,
                 'finger_count': finger_count,
                 'gesture_confirmed': gesture_confirmed,
-                'pinch_detected': pinch_detected,
-                'is_pinching': self.is_pinching,
+                'peace_detected': peace_detected,
                 'timestamp': time.time()
             }
         
@@ -351,13 +343,13 @@ class GestureDJCore:
         
         pose = hand_data.get('pose')
         gesture_confirmed = hand_data.get('gesture_confirmed', False)
-        pinch_detected = hand_data.get('pinch_detected', False)
+        peace_detected = hand_data.get('peace_detected', False)
         
-        # Priority 1: Check for pinch (scratch effect)
-        if pinch_detected:
-            print(f"[Gesture] PINCH detected! Playing scratch effect...")
+        # Priority 1: Check for peace sign (scratch effect)
+        if peace_detected:
+            print(f"[Gesture] PEACE SIGN detected! Playing scratch effect...")
             self.audio.play_scratch_effect()
-            return {'type': 'scratch_event', 'action': 'pinch'}
+            return {'type': 'scratch_event', 'action': 'peace'}
         
         # Priority 2: Check for theme change gestures (palm/fist)
         if gesture_confirmed and pose != self.last_pose_processed:
@@ -388,15 +380,15 @@ class GestureDJCore:
         audio_state = self.audio.get_state()
         mood_state = self.mood_lighting.get_state()
         
-        # Get pinch detection if available
-        pinch_detected = False
+        # Get peace sign detection if available
+        peace_detected = False
         if self.hand_tracker and not self.hand_tracker.simulation_mode:
-            pinch_detected = self.hand_tracker.pinch_detected
+            peace_detected = self.hand_tracker.peace_detected
         
         return {
             **audio_state,
             'mood': mood_state,
-            'pinch_detected': pinch_detected
+            'peace_detected': peace_detected
         }
     
     def cleanup(self):
