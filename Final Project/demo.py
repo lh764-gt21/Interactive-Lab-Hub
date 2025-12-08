@@ -13,6 +13,7 @@ import time
 import random
 import math
 from gesture_dj_core import GestureDJCore
+from display import Display
 import cv2
 
 # Use the web folder for templates
@@ -25,6 +26,10 @@ print("="*60)
 print("  GESTURE DJ DEMO - Initializing")
 print("="*60)
 dj_core = GestureDJCore(enable_camera=True, headless_camera=True)
+
+# Initialize PiTFT Display (use SPI directly, no framebuffer on this Pi)
+print("[Demo] Initializing PiTFT display...")
+pitft_display = Display(simulation_mode=False, prefer_framebuffer=False)
 print("="*60)
 
 
@@ -170,6 +175,30 @@ def process_mpr121_touch():
             print(f"[Demo] MPR121 touch error: {e}")
             time.sleep(0.1)
 
+
+def update_pitft_display():
+    """Background thread to update the PiTFT display"""
+    # Show welcome message first
+    try:
+        pitft_display.show_message("GESTURE DJ")
+        time.sleep(1)
+    except Exception as e:
+        print(f"[Demo] Display welcome error: {e}")
+    
+    while True:
+        try:
+            # Get current state from core
+            state = dj_core.get_state()
+            
+            # Update the display with DJ state
+            pitft_display.update_dj_display(state)
+            
+            time.sleep(0.2)  # Update at ~5 FPS (display doesn't need high refresh)
+        except Exception as e:
+            print(f"[Demo] Display update error: {e}")
+            time.sleep(0.5)
+
+
 def broadcast_audio_data():
     """Background thread to broadcast audio data"""
     while True:
@@ -213,7 +242,7 @@ def hand_status():
 
 @app.route('/api/sensors')
 def sensor_status():
-    """Get status of all sensors"""
+    """Get status of all sensors and display"""
     return jsonify({
         'voice': {
             'available': dj_core.voice.available if dj_core.voice else False,
@@ -227,6 +256,10 @@ def sensor_status():
         },
         'hand_tracker': {
             'available': dj_core.hand_tracker is not None and not dj_core.hand_tracker.simulation_mode
+        },
+        'display': {
+            'available': not pitft_display.simulation_mode,
+            'type': 'framebuffer' if pitft_display._framebuffer_path else 'spi' if hasattr(pitft_display, 'disp') else 'simulation'
         }
     })
 
@@ -304,6 +337,7 @@ if __name__ == '__main__':
     print("  - Voice control (Vosk speech recognition)")
     print("  - APDS-9960 gesture sensor (swipes)")
     print("  - MPR121 capacitive touch (track selection)")
+    print("  - PiTFT display (retro vaporwave UI)")
     print("  - Full web visualizations")
     print("  - Camera feed streaming")
     print("\nOpen browser to: http://localhost:5000")
@@ -343,6 +377,11 @@ if __name__ == '__main__':
     mpr121_thread.start()
     print("[Demo] MPR121 touch thread started")
     
+    # Start PiTFT display thread
+    display_thread = threading.Thread(target=update_pitft_display, daemon=True)
+    display_thread.start()
+    print("[Demo] PiTFT display thread started")
+    
     broadcast_thread = threading.Thread(target=broadcast_audio_data, daemon=True)
     broadcast_thread.start()
     print("[Demo] Audio broadcast thread started")
@@ -352,7 +391,9 @@ if __name__ == '__main__':
         socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)
     except KeyboardInterrupt:
         print("\n[Demo] Shutting down...")
+        pitft_display.cleanup()
         dj_core.cleanup()
     except Exception as e:
         print(f"\n[Demo] Error: {e}")
+        pitft_display.cleanup()
         dj_core.cleanup()
