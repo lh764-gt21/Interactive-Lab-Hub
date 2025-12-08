@@ -47,7 +47,10 @@ audio_state = {
             'emoji': '🌆'
         },
         'effects_enabled': False
-    }
+    },
+    # Hand distance for scratch control
+    'hand_distance': 0.5,
+    'scratch_rate': 1.0
 }
 
 # Reference to audio engine and hand tracker (set by main app)
@@ -142,6 +145,12 @@ def get_state():
     return jsonify(audio_state)
 
 
+@app.route('/effects/<path:filename>')
+def serve_effect(filename):
+    """Serve effect sound files"""
+    return send_from_directory('effects', filename)
+
+
 @app.route('/api/control/<action>', methods=['POST'])
 def control(action):
     """Control audio playback"""
@@ -202,6 +211,30 @@ def handle_scratch(data):
     direction = data.get('direction', 0)
     print(f'[Web] Scratch: {direction}')
     # Could adjust playback position here
+
+def generate_camera_frames():
+    """Generate MJPEG frames from hand tracker"""
+    global hand_tracker
+    frame_skip = 0
+    
+    while True:
+        try:
+            if hand_tracker and hasattr(hand_tracker, 'last_frame') and hand_tracker.last_frame is not None:
+                # Skip every other frame for better performance
+                frame_skip += 1
+                if frame_skip % 2 == 0:
+                    # Encode frame to JPEG with lower quality for performance
+                    ret, buffer = cv2.imencode('.jpg', hand_tracker.last_frame, 
+                                               [cv2.IMWRITE_JPEG_QUALITY, 70])
+                    if ret:
+                        frame = buffer.tobytes()
+                        yield (b'--frame\r\n'
+                               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            time.sleep(0.05)  # ~20 FPS
+        except Exception as e:
+            print(f"[Web] Camera stream error: {e}")
+            time.sleep(0.1)
+
 
 @app.route('/video_feed')
 def video_feed():

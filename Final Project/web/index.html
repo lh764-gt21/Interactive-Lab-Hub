@@ -357,12 +357,99 @@
             font-style: italic;
             font-size: 0.8rem;
         }
+
+        /* DJ Scratch Visual */
+        #scratch-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(255, 0, 128, 0.3), transparent);
+            border: 3px solid rgba(255, 0, 128, 0.5);
+            border-radius: 50%;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+            transition: opacity 0.3s ease, transform 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', monospace;
+            color: #ff0080;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        #scratch-indicator.active {
+            opacity: 1;
+            animation: scratch-pulse 0.5s ease-in-out infinite;
+        }
+
+        @keyframes scratch-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        #scratch-indicator::before {
+            content: '';
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                rgba(255, 0, 128, 0.5),
+                transparent 90deg,
+                transparent 180deg,
+                rgba(255, 0, 128, 0.5) 270deg
+            );
+            animation: vinyl-spin 2s linear infinite;
+        }
+
+        @keyframes vinyl-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        #scratch-indicator.scratching::before {
+            animation: vinyl-scratch 0.2s ease-in-out infinite alternate;
+        }
+
+        @keyframes vinyl-scratch {
+            0% { transform: rotate(-10deg); }
+            100% { transform: rotate(10deg); }
+        }
     </style>
 </head>
 
 <body>
     <canvas id="particles-canvas"></canvas>
     <canvas id="bubbles-canvas"></canvas>
+    
+    <!-- DJ Scratch Indicator -->
+    <div id="scratch-indicator">
+        <div style="position: relative; z-index: 2;">SCRATCH</div>
+    </div>
+    
+    <!-- Audio elements -->
+    <audio id="swoosh-sound" preload="auto">
+        <source src="/effects/swoosh.mp3" type="audio/mpeg">
+    </audio>
+    
+    <!-- Scratch sounds -->
+    <audio id="scratch1-sound" preload="auto">
+        <source src="/effects/scratch1.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="scratch2-sound" preload="auto">
+        <source src="/effects/scratch2.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="scratch3-sound" preload="auto">
+        <source src="/effects/scratch3.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="scratch4-sound" preload="auto">
+        <source src="/effects/scratch4.mp3" type="audio/mpeg">
+    </audio>
 
     <div class="container">
         <header class="header">
@@ -377,7 +464,7 @@
         <div class="mood-indicator" id="mood-indicator">
             <div class="mood-name" id="mood-name">Dark Mode</div>
             <div class="mood-description" id="mood-description">Night time theme</div>
-            <div class="gesture-hint">Use hand gestures: ✋ Open Palm = Light | ✊ Closed Fist = Dark</div>
+            <div class="gesture-hint">Use hand gestures: ✋ Open Palm = Light | ✊ Closed Fist = Dark (hold 2.5s)</div>
         </div>
 
         <div class="camera-container" id="camera-container">
@@ -431,6 +518,17 @@
                 <div class="status-label">TEMPO</div>
                 <div class="status-value" id="tempo-display">1.0x</div>
             </div>
+            <div class="status-item">
+                <div class="status-label">SCRATCH</div>
+                <div class="status-value" id="scratch-display">--</div>
+            </div>
+        </div>
+        
+        <!-- Test Scratch Button (temporary for debugging) -->
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="test-scratch-btn" style="padding: 10px 20px; font-size: 1rem; cursor: pointer; background: #ff0080; color: white; border: none; border-radius: 5px;">
+                🎧 Test Scratch Sound
+            </button>
         </div>
     </div>
 
@@ -479,11 +577,157 @@
             }
         };
 
+        // === DJ SCRATCH EFFECT (FINGER PINCH) ===
+        const swooshSound = document.getElementById('swoosh-sound');
+        const scratchSounds = [
+            document.getElementById('scratch1-sound'),
+            document.getElementById('scratch2-sound'),
+            document.getElementById('scratch3-sound'),
+            document.getElementById('scratch4-sound')
+        ];
+        const scratchIndicator = document.getElementById('scratch-indicator');
+        let lastMoodName = null;
+        let lastPinchState = false;
+        let audioInitialized = false;
+
+        // Initialize audio on first user interaction
+        function initializeAudio() {
+            if (!audioInitialized) {
+                console.log('[Audio] Initializing scratch sounds...');
+                scratchSounds.forEach((sound, index) => {
+                    if (sound) {
+                        sound.volume = 0.8;
+                        sound.load();
+                        console.log(`[Audio] ✓ Loaded scratch${index + 1}.mp3`);
+                    } else {
+                        console.error(`[Audio] ✗ scratch${index + 1}-sound element not found!`);
+                    }
+                });
+                audioInitialized = true;
+                console.log('[Audio] ✓ All scratch sounds ready!');
+            }
+        }
+
+        // Initialize immediately and on first click
+        initializeAudio();
+        document.addEventListener('click', initializeAudio, { once: true });
+
+        function handleFingerPinch(pinchDetected) {
+            const scratchDisplay = document.getElementById('scratch-display');
+            
+            // Detect pinch trigger (transition from false to true)
+            if (pinchDetected && !lastPinchState) {
+                console.log('[Pinch] Finger pinch detected!');
+                
+                // Ensure audio is initialized
+                initializeAudio();
+                
+                // Update display
+                if (scratchDisplay) {
+                    scratchDisplay.textContent = 'PINCH!';
+                    setTimeout(() => {
+                        scratchDisplay.textContent = '--';
+                    }, 500);
+                }
+                
+                // Show visual indicator
+                scratchIndicator.classList.add('active');
+                setTimeout(() => {
+                    scratchIndicator.classList.remove('active');
+                }, 300);
+                
+                // Pause music if playing
+                const wasMusicPlaying = audioData.is_playing && !audioData.is_paused;
+                if (wasMusicPlaying) {
+                    console.log('[Pinch] Pausing music...');
+                    fetch('/api/control/pause', { method: 'POST' })
+                        .catch(e => console.log('[Scratch] Pause failed:', e));
+                }
+                
+                // PLAY RANDOM SCRATCH SOUND
+                const randomIndex = Math.floor(Math.random() * 4); // 0-3
+                const scratchSound = scratchSounds[randomIndex];
+                
+                if (!scratchSound) {
+                    console.error(`[Pinch] ✗ ERROR: scratch${randomIndex + 1}-sound is NULL!`);
+                    alert('Scratch sound not found! Check console.');
+                    return;
+                }
+                
+                console.log(`[Pinch] 🎲 Randomly selected: scratch${randomIndex + 1}.mp3`);
+                console.log(`[Pinch] 🎵 Playing at volume 0.9...`);
+                
+                // Stop any currently playing scratch
+                scratchSounds.forEach(s => {
+                    if (s && !s.paused) {
+                        s.pause();
+                        s.currentTime = 0;
+                    }
+                });
+                
+                // Play the selected scratch
+                scratchSound.currentTime = 0;
+                scratchSound.volume = 0.9;
+                scratchSound.playbackRate = 1.0;
+                
+                scratchSound.play()
+                    .then(() => {
+                        console.log(`[Pinch] ✓✓✓ PLAYING scratch${randomIndex + 1}.mp3 ✓✓✓`);
+                    })
+                    .catch(e => {
+                        console.error(`[Pinch] ✗✗✗ FAILED: scratch${randomIndex + 1}.mp3`);
+                        console.error('[Pinch] Error:', e.message, '|', e.name);
+                        if (e.name === 'NotAllowedError') {
+                            console.error('[Pinch] ⚠️ Browser blocked! Click page first!');
+                            alert('Audio blocked! Click anywhere on page first.');
+                        }
+                    });
+                
+                // Resume music after scratch finishes
+                if (wasMusicPlaying) {
+                    scratchSound.onended = () => {
+                        console.log('[Pinch] ✓ Scratch done, resuming music...');
+                        setTimeout(() => {
+                            fetch('/api/control/play', { method: 'POST' })
+                                .catch(e => console.error('[Pinch] Resume failed:', e));
+                        }, 200);
+                    };
+                }
+            }
+            
+            lastPinchState = pinchDetected;
+        }
+
         // === ENHANCED MOOD LIGHTING FUNCTION ===
         function applyMoodLighting(moodConfig) {
             if (!moodConfig) return;
+            
+            // Only log and play sound when theme actually changes
+            if (lastMoodName !== null && lastMoodName !== moodConfig.name) {
+                console.log('[MoodLighting] Theme changed:', lastMoodName, '→', moodConfig.name);
                 
-            console.log('[MoodLighting] Applying theme:', moodConfig.name);
+                try {
+                    swooshSound.currentTime = 0;
+                    swooshSound.volume = 0.5;
+                    swooshSound.playbackRate = 1.0;
+                    swooshSound.play().catch(e => {
+                        console.log('[Audio] Theme swoosh failed:', e.message);
+                    });
+                    setTimeout(() => {
+                        swooshSound.pause();
+                    }, 500);
+                } catch (e) {
+                    console.log('[Audio] Theme error:', e);
+                }
+            }
+            
+            // Update last mood name
+            if (lastMoodName !== moodConfig.name) {
+                lastMoodName = moodConfig.name;
+            } else {
+                // Skip applying if no change
+                return;
+            }
             
             // === FORCE BACKGROUND OVERRIDE ===
             const gradient = moodConfig.gradient || ['#0a0a1a', '#1a0a2e', '#0a1a2e'];
@@ -492,8 +736,6 @@
             document.body.style.setProperty('background', gradientString, 'important');
             document.body.style.setProperty('background-attachment', 'fixed', 'important');
             document.body.style.setProperty('background-size', 'cover', 'important');
-            
-            console.log('[MoodLighting] ✅ Background set:', gradient);
     
             // === TEXT COLORS ===
             const textColor = moodConfig.text || '#ffffff';
@@ -628,12 +870,6 @@
             
             document.querySelectorAll('.status-label').forEach(label => {
                 label.style.color = isLight ? 'rgba(44, 62, 80, 0.6)' : 'rgba(255, 255, 255, 0.5)';
-            });
-            
-            console.log('[MoodLighting] ✅ Theme applied successfully!', {
-                name: moodConfig.name,
-                primary: moodConfig.primary,
-                background: gradient[0]
             });
         }
 
@@ -919,7 +1155,7 @@
             // Theme-aware background particles
             particlesCtx.fillStyle = isLight ? 'rgba(240, 244, 248, 0.1)' : 'rgba(10, 10, 26, 0.1)';
             particlesCtx.fillRect(0, 0, particlesCanvas.width, particlesCanvas.height);
-            
+
             if (audioData.is_playing) {
                 particles.forEach(p => {
                     p.update(audioData.bass_level);
@@ -972,6 +1208,47 @@
             });
         }
 
+        // === DJ SCRATCH EFFECT VISUALIZATION ===
+        const flashOverlay = document.getElementById('flash-overlay');
+        let lastScratchRate = 1.0;
+
+        function updateScratchDisplay(scratchRate, handDistance) {
+            // Update scratch rate display
+            const scratchDisplay = document.getElementById('scratch-display');
+            if (scratchDisplay) {
+                if (scratchRate < 0) {
+                    scratchDisplay.textContent = `${scratchRate.toFixed(1)}x ◀`;
+                    scratchDisplay.style.color = '#ff4da6'; // Pink for reverse
+                } else if (scratchRate > 1.5) {
+                    scratchDisplay.textContent = `${scratchRate.toFixed(1)}x ▶`;
+                    scratchDisplay.style.color = '#00ffff'; // Cyan for fast
+                } else {
+                    scratchDisplay.textContent = `${scratchRate.toFixed(1)}x`;
+                    scratchDisplay.style.color = '#ffffff'; // White for normal
+                }
+            }
+            
+            // Visual feedback: flash overlay intensity based on scratch movement
+            if (Math.abs(scratchRate - lastScratchRate) > 0.1) {
+                const intensity = Math.min(0.3, Math.abs(scratchRate - lastScratchRate) * 0.2);
+                const isLightMode = audioData.mood?.mood_config?.name === 'Light';
+                
+                if (isLightMode) {
+                    flashOverlay.style.background = 'rgba(255, 255, 255, 0.5)';
+                } else {
+                    flashOverlay.style.background = 'rgba(255, 0, 128, 0.4)';
+                }
+                
+                flashOverlay.style.opacity = intensity.toString();
+                
+                setTimeout(() => {
+                    flashOverlay.style.opacity = '0';
+                }, 100);
+            }
+            
+            lastScratchRate = scratchRate;
+        }
+
         // Socket events
         socket.on('audio_update', (data) => {
             audioData = { ...audioData, ...data };
@@ -982,6 +1259,11 @@
 
             if (data.mood && data.mood.bubbles_active && !bubblesActive) {
                 activateBubbles();
+            }
+
+            // Handle finger pinch for scratching
+            if (data.pinch_detected !== undefined) {
+                handleFingerPinch(data.pinch_detected);
             }
 
             document.getElementById('track-name').textContent = data.track_name || 'Track';
@@ -1034,6 +1316,84 @@
 
         document.getElementById('vol-down-btn').addEventListener('click', async () => {
             await fetch('/api/control/volume_down', { method: 'POST' });
+        });
+
+        // Test scratch button with detailed debugging
+        document.getElementById('test-scratch-btn').addEventListener('click', () => {
+            console.log('='.repeat(60));
+            console.log('[Test] Testing scratch sound system...');
+            console.log('[Test] Available scratch sounds:', scratchSounds.length);
+            
+            scratchSounds.forEach((sound, i) => {
+                if (sound) {
+                    console.log(`[Test] scratch${i+1}:`, sound.src, 'readyState:', sound.readyState, 'error:', sound.error);
+                } else {
+                    console.error(`[Test] scratch${i+1}: NULL - element not found!`);
+                }
+            });
+            
+            initializeAudio();
+            
+            const randomIndex = Math.floor(Math.random() * scratchSounds.length);
+            const scratchSound = scratchSounds[randomIndex];
+            
+            if (!scratchSound) {
+                console.error('[Test] ERROR: Scratch sound element not found!');
+                alert('Error: Scratch sound element not found! Check console.');
+                return;
+            }
+            
+            console.log(`[Test] Selected: scratch${randomIndex + 1}.mp3`);
+            console.log(`[Test] Source: ${scratchSound.src}`);
+            console.log(`[Test] Ready state: ${scratchSound.readyState}`);
+            
+            scratchSound.load();
+            scratchSound.currentTime = 0;
+            scratchSound.volume = 0.9;
+            
+            console.log('[Test] Attempting to play...');
+            
+            scratchSound.play()
+                .then(() => {
+                    console.log('[Test] ✓✓✓ SUCCESS - Scratch sound is playing!');
+                    console.log('[Test] Duration:', scratchSound.duration, 'seconds');
+                })
+                .catch(e => {
+                    console.error('[Test] ✗✗✗ FAILED -', e.message);
+                    console.error('[Test] Error:', e);
+                    alert('✗ Scratch failed: ' + e.message + '\n\nCheck browser console (F12) for details.');
+                });
+            
+            console.log('='.repeat(60));
+        });
+
+        // Test scratch button
+        document.getElementById('test-scratch-btn').addEventListener('click', () => {
+            console.log('[Test] Testing scratch sound...');
+            initializeAudio();
+            
+            const randomIndex = Math.floor(Math.random() * scratchSounds.length);
+            const scratchSound = scratchSounds[randomIndex];
+            
+            if (!scratchSound) {
+                console.error('[Test] Scratch sound element not found!');
+                alert('Error: Scratch sound not loaded. Check console.');
+                return;
+            }
+            
+            console.log(`[Test] Playing scratch${randomIndex + 1}.mp3`);
+            scratchSound.currentTime = 0;
+            scratchSound.volume = 0.8;
+            
+            scratchSound.play()
+                .then(() => {
+                    console.log('[Test] ✓ Scratch sound playing!');
+                    alert('✓ Scratch sound is working!');
+                })
+                .catch(e => {
+                    console.error('[Test] Play failed:', e);
+                    alert('✗ Scratch sound failed: ' + e.message + '\n\nCheck browser console for details.');
+                });
         });
 
         // Scratch interaction

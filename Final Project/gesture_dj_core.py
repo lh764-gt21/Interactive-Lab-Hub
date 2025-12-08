@@ -20,9 +20,16 @@ class SimpleHandTracker:
         self.headless = headless
         self.current_pose = None
         self.gesture_start_time = None
-        self.gesture_hold_threshold = 2.0
+        self.gesture_hold_threshold = 2.5
         self.simulation_mode = False
         self.last_frame = None
+        
+        # Finger pinch detection
+        self.last_pinch_distance = None
+        self.pinch_detected = False
+        self.pinch_cooldown_time = None
+        self.pinch_cooldown_duration = 0.3
+        self.is_pinching = False
         
         try:
             self.mp_hands = mp.solutions.hands
@@ -40,8 +47,10 @@ class SimpleHandTracker:
                 self.simulation_mode = True
                 return
             
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            # Lower resolution for better performance
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
+            self.cap.set(cv2.CAP_PROP_FPS, 30)
             
             # Test frame
             ret, test_frame = self.cap.read()
@@ -53,6 +62,34 @@ class SimpleHandTracker:
         except Exception as e:
             print(f"[HandTracker] Failed to initialize: {e}")
             self.simulation_mode = True
+    
+    def detect_finger_pinch(self, landmarks):
+        """Detect finger pinch (thumb + index)"""
+        if not landmarks:
+            return False
+        
+        current_time = time.time()
+        if self.pinch_cooldown_time and (current_time - self.pinch_cooldown_time) < self.pinch_cooldown_duration:
+            return False
+        
+        thumb_tip = landmarks[4]
+        index_tip = landmarks[8]
+        
+        dx = thumb_tip.x - index_tip.x
+        dy = thumb_tip.y - index_tip.y
+        dz = thumb_tip.z - index_tip.z
+        
+        distance = (dx**2 + dy**2 + dz**2) ** 0.5
+        
+        pinch_threshold = 0.05
+        was_pinching = self.is_pinching
+        self.is_pinching = distance < pinch_threshold
+        
+        if self.is_pinching and not was_pinching:
+            self.pinch_cooldown_time = current_time
+            return True
+        
+        return False
     
     def count_fingers(self, landmarks):
         if not landmarks:
@@ -112,15 +149,23 @@ class SimpleHandTracker:
             finger_count = self.count_fingers(landmarks)
             pose = self.classify_pose(finger_count)
             gesture_confirmed = self.check_gesture_hold(pose)
+            pinch_detected = self.detect_finger_pinch(landmarks)
             
             # ALWAYS draw landmarks (for streaming)
             height, width, _ = frame.shape
             self.mp_draw.draw_landmarks(frame, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
             
             cv2.putText(frame, f"Pose: {pose}", (10, 30),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(frame, f"Fingers: {finger_count}", (10, 70),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            cv2.putText(frame, f"Fingers: {finger_count}", (10, 60),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            
+            if pinch_detected:
+                cv2.putText(frame, "PINCH!", (10, 150),
+                           cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 3)
+            elif self.is_pinching:
+                cv2.putText(frame, "Pinching...", (10, 150),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             
             if self.gesture_start_time:
                 hold_time = time.time() - self.gesture_start_time
@@ -146,6 +191,8 @@ class SimpleHandTracker:
                 'pose': pose,
                 'finger_count': finger_count,
                 'gesture_confirmed': gesture_confirmed,
+                'pinch_detected': pinch_detected,
+                'is_pinching': self.is_pinching,
                 'timestamp': time.time()
             }
         
@@ -184,6 +231,7 @@ class GestureDJCore:
         
         self.running = False
         self.last_pose_processed = None
+        self.currently_scratching = False
         
         # Audio engine
         self.audio = AudioEngine(tracks_dir="tracks", effects_dir="effects")
@@ -298,32 +346,61 @@ class GestureDJCore:
         return None
     
     def handle_hand_gesture(self, hand_data):
-        """Process MediaPipe hand gesture for mood lighting"""
+        """Process MediaPipe hand gesture for mood lighting and scratching"""
         if not hand_data:
+            # No hand detected - stop scratching if active
+            if self.currently_scratching:
+                self.audio.stop_scratch()
+                self.currently_scratching = False
             return None
         
-        pose = hand_data.get('pose')
-        if not pose:
-            return None
+        # Check for scratch gesture
+        should_scratch = hand_data.get('should_scratch', False)
         
-        gesture_confirmed = hand_data.get('gesture_confirmed', False)
+        if should_scratch and not self.currently_scratching:
+            # Start scratching
+            self.audio.start_scratch()
+            self.currently_scratching = True
+            return {
+                'type': 'scratch_start',
+                'intensity': hand_data.get('scratch_intensity', 0)
+            }
+        elif not should_scratch and self.currently_scratching:
+            # Stop scratching
+            self.audio.stop_scratch()
+            self.currently_scratching = False
+            return {
+                'type': 'scratch_stop'
+            }
         
-        if gesture_confirmed and pose != self.last_pose_processed:
-            if pose in ['palm', 'fist']:
-                print(f"[Gesture] {pose.upper()} confirmed")
-                
-                mood_changed = self.mood_lighting.set_mood_from_gesture(pose)
-                
-                if mood_changed:
-                    mood = self.mood_lighting.get_current_mood()
-                    self.last_pose_processed = pose
+        # Check for theme change gestures (only when not scratching)
+        if not should_scratch:
+            pose = hand_data.get('pose')
+            if not pose:
+                return None
+            
+            gesture_confirmed = hand_data.get('gesture_confirmed', False)
+            
+            if gesture_confirmed and pose != self.last_pose_processed:
+                if pose in ['palm', 'fist']:
+                    print(f"[Gesture] {pose.upper()} confirmed")
                     
-                    return {
-                        'type': 'mood_change',
-                        'pose': pose,
-                        'mood': mood,
-                        'mood_state': self.mood_lighting.get_state()
-                    }
+                    mood_changed = self.mood_lighting.set_mood_from_gesture(pose)
+                    
+                    if mood_changed:
+                        # Play swoosh sound effect on theme change
+                        self.audio.play_effect("swoosh")
+                        print(f"[Audio] Playing swoosh effect for theme change")
+                        
+                        mood = self.mood_lighting.get_current_mood()
+                        self.last_pose_processed = pose
+                        
+                        return {
+                            'type': 'mood_change',
+                            'pose': pose,
+                            'mood': mood,
+                            'mood_state': self.mood_lighting.get_state()
+                        }
         
         return None
     
@@ -332,9 +409,15 @@ class GestureDJCore:
         audio_state = self.audio.get_state()
         mood_state = self.mood_lighting.get_state()
         
+        # Get pinch detection if available
+        pinch_detected = False
+        if self.hand_tracker and not self.hand_tracker.simulation_mode:
+            pinch_detected = self.hand_tracker.pinch_detected
+        
         return {
             **audio_state,
-            'mood': mood_state
+            'mood': mood_state,
+            'pinch_detected': pinch_detected
         }
     
     def cleanup(self):

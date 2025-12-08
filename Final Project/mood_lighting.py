@@ -1,7 +1,7 @@
 """
 Mood Lighting System
 Controls visual themes and color schemes for web UI and display
-Owner: Gesture control team
+Owner: Eva Huang
 """
 
 import time

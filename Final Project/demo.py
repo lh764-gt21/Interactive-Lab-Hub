@@ -3,7 +3,7 @@ Gesture DJ Demo - Web Interface + Core Logic
 Uses gesture_dj_core.py for all business logic
 """
 
-from flask import Flask, Response, render_template, jsonify
+from flask import Flask, Response, render_template, jsonify, send_from_directory
 from flask_socketio import SocketIO
 import threading
 import time
@@ -25,29 +25,34 @@ dj_core = GestureDJCore(enable_camera=True, headless_camera=True)
 print("="*60)
 
 def generate_camera_frames():
-    """Stream camera from core tracker"""
+    """Stream camera from core tracker with optimized performance"""
     if not dj_core.hand_tracker or dj_core.hand_tracker.simulation_mode:
         # No camera - blank frame
         while True:
-            frame = cv2.zeros((480, 640, 3), dtype='uint8')
-            cv2.putText(frame, "Camera not available", (150, 240),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-            ret, buffer = cv2.imencode('.jpg', frame)
+            frame = cv2.zeros((360, 480, 3), dtype='uint8')
+            cv2.putText(frame, "Camera not available", (100, 180),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
             time.sleep(0.1)
     else:
         # Stream from core's hand tracker
         print("[Demo] Camera stream started")
+        frame_skip = 0
         while True:
             try:
                 if hasattr(dj_core.hand_tracker, 'last_frame') and dj_core.hand_tracker.last_frame is not None:
-                    frame = dj_core.hand_tracker.last_frame.copy()
-                    ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-                    yield (b'--frame\r\n'
-                           b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-                else:
-                    time.sleep(0.05)
+                    # Skip every other frame for better performance
+                    frame_skip += 1
+                    if frame_skip % 2 == 0:
+                        frame = dj_core.hand_tracker.last_frame
+                        # Lower JPEG quality for better performance
+                        ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                        if ret:
+                            yield (b'--frame\r\n'
+                                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+                time.sleep(0.05)  # ~20 FPS (with frame skipping = ~10 FPS effective)
             except Exception as e:
                 print(f"[Demo] Camera stream error: {e}")
                 time.sleep(0.1)
@@ -97,11 +102,12 @@ def process_gestures():
             if dj_core.hand_tracker:
                 hand_data = dj_core.hand_tracker.get_data()
                 if hand_data:
+                    # Handle mood change gestures
                     result = dj_core.handle_hand_gesture(hand_data)
                     if result and result.get('type') == 'mood_change':
                         print(f"[Demo] Mood changed: {result['mood']['name']}")
             
-            time.sleep(0.02)
+            time.sleep(0.05)
         except Exception as e:
             print(f"[Demo] Gesture processing error: {e}")
             time.sleep(0.1)
@@ -145,6 +151,12 @@ def hand_status():
     if tracker and not tracker.simulation_mode:
         return jsonify({"tracking": True, "available": True})
     return jsonify({"tracking": False, "available": False})
+
+
+@app.route('/effects/<path:filename>')
+def serve_effect(filename):
+    """Serve effect sound files"""
+    return send_from_directory('effects', filename)
 
 @app.route('/api/control/<action>', methods=['POST'])
 def control(action):

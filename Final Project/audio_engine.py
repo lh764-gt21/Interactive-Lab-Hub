@@ -6,6 +6,7 @@ Owner: Eva (lh764)
 
 import pygame
 import time
+import random
 from pathlib import Path
 
 class AudioEngine:
@@ -32,6 +33,11 @@ class AudioEngine:
         # Speed presets (discrete levels for playback)
         self.speed_presets = [0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5]
         
+        # Scratch state
+        self.scratching = False
+        self.pause_position = 0  # Store position when scratching starts
+        self.was_playing_before_scratch = False
+        
         # Effect sounds
         self.effects = self._load_effects()
         
@@ -56,7 +62,7 @@ class AudioEngine:
         effect_files = {
             "beep": "beep.mp3",      # Track change
             "click": "click.mp3",    # Volume change
-            "whoosh": "whoosh.mp3",  # Effect toggle
+            "swoosh": "swoosh.mp3",  # Theme change
         }
         
         for name, filename in effect_files.items():
@@ -245,6 +251,47 @@ class AudioEngine:
         """Play a sound effect"""
         if effect_name in self.effects and self.effects[effect_name]:
             self.effects[effect_name].play()
+    
+    def start_scratch(self):
+        """Start DJ scratch - pause music and play random scratch sound"""
+        if self.scratching:
+            return  # Already scratching
+        
+        self.scratching = True
+        
+        # Remember if music was playing
+        self.was_playing_before_scratch = self.is_playing and not self.is_paused
+        
+        if self.was_playing_before_scratch:
+            # Get current position before pausing
+            self.pause_position = pygame.mixer.music.get_pos() / 1000.0  # Convert ms to seconds
+            pygame.mixer.music.pause()
+            print(f"[Scratch] Music paused at {self.pause_position:.2f}s")
+        
+        # Play random scratch sound
+        if self.scratch_sounds:
+            scratch_sound = random.choice(self.scratch_sounds)
+            scratch_sound.set_volume(self.volume * 0.8)  # Slightly quieter than music
+            scratch_sound.play()
+            print(f"[Scratch] Playing scratch sound (selected from {len(self.scratch_sounds)} sounds)")
+    
+    def stop_scratch(self):
+        """Stop DJ scratch - resume music from where it was paused"""
+        if not self.scratching:
+            return  # Not scratching
+        
+        self.scratching = False
+        
+        # Stop any playing scratch sounds
+        pygame.mixer.stop()  # Stop all Sound objects
+        
+        # Resume music if it was playing before
+        if self.was_playing_before_scratch:
+            pygame.mixer.music.unpause()
+            print(f"[Scratch] Music resumed from {self.pause_position:.2f}s")
+        
+        self.was_playing_before_scratch = False
+    
     
     def get_playback_position(self):
         """Get current playback position in seconds"""
