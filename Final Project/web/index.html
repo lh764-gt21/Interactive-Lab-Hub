@@ -36,6 +36,7 @@
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
+            transition: background 1s ease;
         }
 
         /* Header */
@@ -500,6 +501,12 @@
             
             // === THEME-SPECIFIC STYLING ===
             const isLight = moodConfig.name === 'Light';
+            
+            // Container background
+            const container = document.querySelector('.container');
+            if (container) {
+                container.style.background = isLight ? 'rgba(200, 230, 245, 0.3)' : 'transparent';
+            }
             
             // Panels
             const panelBg = isLight ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.3)';
