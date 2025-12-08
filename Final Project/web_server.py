@@ -9,7 +9,8 @@ import threading
 import time
 import random
 import math
-from flask import Flask, render_template, jsonify, send_from_directory
+import cv2
+from flask import Flask, render_template, jsonify, send_from_directory, Response
 from flask_socketio import SocketIO, emit
 
 # Create Flask app
@@ -35,16 +36,34 @@ audio_state = {
     'mid_level': 0,
     'high_level': 0,
     'beat_detected': False,
+    # Mood lighting state
+    'mood': {
+        'mood': 'default',
+        'mood_config': {
+            'name': 'Default',
+            'gradient': ['#0a0a1a', '#1a0a2e', '#0a1a2e'],
+            'primary': '#ff0080',
+            'secondary': '#00ffff',
+            'emoji': '🌆'
+        },
+        'effects_enabled': False
+    }
 }
 
-# Reference to audio engine (set by main app)
+# Reference to audio engine and hand tracker (set by main app)
 audio_engine = None
+hand_tracker = None
 
 
 def set_audio_engine(engine):
     """Set the audio engine reference"""
     global audio_engine
     audio_engine = engine
+
+def set_hand_tracker(tracker):
+    """Set the hand tracker reference for camera streaming"""
+    global hand_tracker
+    hand_tracker = tracker
 
 
 def generate_fake_audio_data():
@@ -184,11 +203,33 @@ def handle_scratch(data):
     print(f'[Web] Scratch: {direction}')
     # Could adjust playback position here
 
+@app.route('/video_feed')
+def video_feed():
+    """MJPEG camera stream (like demo.py)"""
+    return Response(generate_camera_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 def update_state(new_state):
     """Update audio state from main app"""
     global audio_state
+    
+    # Check if mood changed
+    old_mood = audio_state.get('mood', {}).get('mood')
+    new_mood = new_state.get('mood', {}).get('mood')
+    
+    if old_mood != new_mood:
+        print(f"[Web] Mood changed: {old_mood} -> {new_mood}")
+    
     audio_state.update(new_state)
+    
+    # Broadcast immediately if mood changed
+    if old_mood != new_mood:
+        print(f"[Web] Broadcasting mood update to clients...")
+        socketio.emit('audio_update', audio_state)
+
+# Camera streaming now uses MJPEG via /video_feed route (like demo.py)
+# No need for WebSocket camera frame broadcasting
 
 
 def run_server(host='0.0.0.0', port=5000, debug=False):

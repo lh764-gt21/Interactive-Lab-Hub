@@ -398,8 +398,68 @@ class Display:
         
         x = (self.width - text_width) // 2
         
+        # Use custom color if provided, otherwise use default
+        text_color = color if color else COLORS['text_dark']
+        
         self.draw.text((x, content_center_y), message, 
-                      font=self.font_large, fill=COLORS['text_dark'])
+                      font=self.font_large, fill=text_color)
+        
+        if hasattr(self, "disp"):
+            self.disp.image(self.image, self.rotation)
+        elif self._framebuffer_path:
+            self._fb_blit()
+    
+    def show_gesture_feedback(self, gesture_name, mood_color=None, emoji=""):
+        """
+        Show gesture feedback with mood color
+        gesture_name: Name of the gesture (e.g., "ENERGETIC", "CHILL")
+        mood_color: RGB tuple for the mood color
+        emoji: Emoji to display
+        """
+        if self.simulation_mode:
+            print(f"\n>>> {emoji} {gesture_name} <<<\n")
+            return
+        
+        # Draw retro window
+        self._draw_retro_window()
+        
+        # Content area center
+        content_center_y = (25 + self.height - 35) // 2
+        
+        # Draw emoji if provided (larger)
+        if emoji:
+            try:
+                emoji_bbox = self.draw.textbbox((0, 0), emoji, font=self.font_large)
+                emoji_width = emoji_bbox[2] - emoji_bbox[0]
+            except:
+                emoji_width = 30
+            
+            emoji_x = (self.width - emoji_width) // 2
+            self.draw.text((emoji_x, content_center_y - 15), emoji, 
+                          font=self.font_large, fill=COLORS['text_dark'])
+        
+        # Draw gesture name below emoji
+        try:
+            text_bbox = self.draw.textbbox((0, 0), gesture_name, font=self.font_medium)
+            text_width = text_bbox[2] - text_bbox[0]
+        except:
+            text_width = len(gesture_name) * 10
+        
+        text_x = (self.width - text_width) // 2
+        text_y = content_center_y + 15
+        
+        # Use mood color if provided
+        text_color = mood_color if mood_color else COLORS['text_dark']
+        
+        self.draw.text((text_x, text_y), gesture_name, 
+                      font=self.font_medium, fill=text_color)
+        
+        # Add a colored indicator bar at the bottom of content area
+        if mood_color:
+            bar_y = self.height - 40
+            bar_height = 4
+            self.draw.rectangle((10, bar_y, self.width - 10, bar_y + bar_height), 
+                               fill=mood_color)
         
         if hasattr(self, "disp"):
             self.disp.image(self.image, self.rotation)

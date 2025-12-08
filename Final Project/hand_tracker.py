@@ -25,7 +25,7 @@ except ImportError:
 class HandTracker:
     def __init__(self, simulation_mode=False, headless=None):
         """
-        Initialize MediaPipe hand tracking
+        Initialize MediaPipe hand and face tracking
         simulation_mode: If True, use keyboard instead of camera
         headless: If True, don't show camera window (auto-detect if None)
         """
@@ -45,8 +45,14 @@ class HandTracker:
         self.gesture_start_time = None
         self.gesture_hold_threshold = 2.0  # 2 seconds hold time for palm/fist
         
+        # Mouth blow detection state
+        self.mouth_open_ratio = 0.0
+        self.blow_detected = False
+        self.last_blow_time = 0
+        
         if not self.simulation_mode:
             try:
+                # Initialize hand tracking
                 self.mp_hands = mp.solutions.hands
                 self.hands = self.mp_hands.Hands(
                     static_image_mode=False,
@@ -54,6 +60,16 @@ class HandTracker:
                     min_detection_confidence=0.7,
                     min_tracking_confidence=0.5
                 )
+                
+                # Initialize face mesh for mouth detection
+                self.mp_face_mesh = mp.solutions.face_mesh
+                self.face_mesh = self.mp_face_mesh.FaceMesh(
+                    static_image_mode=False,
+                    max_num_faces=1,
+                    min_detection_confidence=0.5,
+                    min_tracking_confidence=0.5
+                )
+                
                 self.mp_draw = mp.solutions.drawing_utils
                 
                 # Initialize camera - always use index 0
@@ -61,7 +77,7 @@ class HandTracker:
                 self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
                 self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
                 
-                print("MediaPipe hand tracking initialized")
+                print("MediaPipe hand + face tracking initialized")
             except Exception as e:
                 print(f"Failed to initialize MediaPipe: {e}")
                 print("Falling back to simulation mode")
@@ -130,33 +146,26 @@ class HandTracker:
     
     def classify_pose(self, finger_count):
         """
-        Classify hand pose based on finger count
+        Classify hand pose based on finger count - SIMPLIFIED
+        Only palm (light theme) and fist (dark theme)
         """
         if finger_count == 5:
-            return 'palm'  # Open palm - Play/Pause
+            return 'palm'  # Open palm - Light/day theme
         elif finger_count == 0:
-            return 'fist'  # Closed fist - Stop
-        elif finger_count == 2:
-            return 'peace'  # Two fingers (V sign) - Bass boost
-        elif finger_count == 4:
-            return 'four'  # Four fingers - Reverb
-        elif finger_count == 1:
-            return 'one'  # One finger - Reserved
-        elif finger_count == 3:
-            return 'three'  # Three fingers - Reserved
+            return 'fist'  # Closed fist - Dark/night theme
         else:
-            return 'unknown'
+            return 'unknown'  # Ignore other gestures
     
     def check_gesture_hold(self, pose):
         """
         Check if a gesture has been held long enough (2 seconds for palm/fist)
         Returns: True if held long enough, False otherwise
         """
-        # Only require hold for palm and fist
+        # Require hold for palm and fist
         requires_hold = pose in ['palm', 'fist']
         
         if not requires_hold:
-            return True  # Instant for other gestures
+            return False  # Don't process unknown gestures
         
         if pose != self.current_pose:
             # New gesture started
@@ -173,6 +182,51 @@ class HandTracker:
                 return True
         
         return False
+    
+    def detect_mouth_blow(self, face_landmarks, image_width, image_height):
+        """
+        Detect if mouth is open (blowing gesture)
+        Uses mouth landmarks to calculate open ratio
+        Returns: True if blow detected
+        """
+        if not face_landmarks:
+            return False
+        
+        try:
+            # Mouth landmarks indices (MediaPipe Face Mesh)
+            # Upper lip: 13, Lower lip: 14
+            # Mouth corners: 61 (left), 291 (right)
+            upper_lip = face_landmarks.landmark[13]
+            lower_lip = face_landmarks.landmark[14]
+            left_corner = face_landmarks.landmark[61]
+            right_corner = face_landmarks.landmark[291]
+            
+            # Calculate vertical mouth opening
+            mouth_height = abs(lower_lip.y - upper_lip.y) * image_height
+            
+            # Calculate horizontal mouth width
+            mouth_width = abs(right_corner.x - left_corner.x) * image_width
+            
+            # Calculate aspect ratio (height/width)
+            if mouth_width > 0:
+                self.mouth_open_ratio = mouth_height / mouth_width
+            else:
+                self.mouth_open_ratio = 0
+            
+            # Detect blow - mouth is relatively wide open (high ratio)
+            # Threshold: > 0.5 indicates mouth is open for blowing
+            current_time = time.time()
+            cooldown = 3.0  # 3 second cooldown between blows
+            
+            if self.mouth_open_ratio > 0.5 and (current_time - self.last_blow_time) > cooldown:
+                self.last_blow_time = current_time
+                return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"[HandTracker] Error detecting mouth blow: {e}")
+            return False
     
     def process_frame(self):
         """
@@ -195,11 +249,25 @@ class HandTracker:
         # Convert to RGB
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
-        # Process with MediaPipe
-        results = self.hands.process(rgb_frame)
+        # Process hands with MediaPipe
+        hand_results = self.hands.process(rgb_frame)
         
-        if results.multi_hand_landmarks:
-            hand_landmarks = results.multi_hand_landmarks[0]
+        # Process face with MediaPipe
+        face_results = self.face_mesh.process(rgb_frame)
+        
+        # Check for mouth blow first
+        blow_detected = False
+        if face_results.multi_face_landmarks:
+            face_landmarks = face_results.multi_face_landmarks[0]
+            blow_detected = self.detect_mouth_blow(face_landmarks, width, height)
+            
+            if blow_detected:
+                # Draw visual feedback for blow
+                cv2.putText(frame, "BLOW DETECTED!", (10, 230),
+                           cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 3)
+        
+        if hand_results.multi_hand_landmarks:
+            hand_landmarks = hand_results.multi_hand_landmarks[0]
             landmarks = hand_landmarks.landmark
             
             # Count fingers
@@ -266,11 +334,34 @@ class HandTracker:
                 'finger_count': finger_count,
                 'finger_distance': finger_distance,
                 'gesture_confirmed': gesture_confirmed,
+                'blow_detected': blow_detected,
+                'mouth_open_ratio': self.mouth_open_ratio,
                 'confidence': 1.0,
                 'timestamp': time.time()
             }
         else:
-            # No hand detected
+            # No hand detected, but check for blow
+            if blow_detected:
+                # Show frame (only if not headless)
+                if not self.headless:
+                    try:
+                        cv2.imshow('Hand Tracking', frame)
+                        cv2.waitKey(1)
+                    except:
+                        pass  # Display error
+                
+                return {
+                    'pose': None,
+                    'finger_count': 0,
+                    'finger_distance': 0.0,
+                    'gesture_confirmed': False,
+                    'blow_detected': blow_detected,
+                    'mouth_open_ratio': self.mouth_open_ratio,
+                    'confidence': 1.0,
+                    'timestamp': time.time()
+                }
+            
+            # Nothing detected
             if not self.headless:
                 try:
                     cv2.imshow('Hand Tracking', frame)

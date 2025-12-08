@@ -15,12 +15,21 @@
             box-sizing: border-box;
         }
 
+        html {
+            height: 100%;
+            width: 100%;
+        }
+
         body {
             background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1a2e 100%);
             min-height: 100vh;
+            width: 100%;
             font-family: 'Rajdhani', sans-serif;
             color: #fff;
             overflow-x: hidden;
+            transition: background 1.5s ease, color 1s ease;
+            background-attachment: fixed;
+            background-size: cover;
         }
 
         .container {
@@ -35,6 +44,7 @@
             padding: 20px 0;
             border-bottom: 2px solid rgba(255, 0, 128, 0.3);
             margin-bottom: 30px;
+            transition: border-color 1s ease;
         }
 
         .header h1 {
@@ -49,17 +59,9 @@
         }
 
         @keyframes gradient {
-            0% {
-                background-position: 0% center;
-            }
-
-            50% {
-                background-position: 100% center;
-            }
-
-            100% {
-                background-position: 0% center;
-            }
+            0% { background-position: 0% center; }
+            50% { background-position: 100% center; }
+            100% { background-position: 0% center; }
         }
 
         /* Track Info */
@@ -70,6 +72,7 @@
             border-radius: 15px;
             margin-bottom: 20px;
             border: 1px solid rgba(255, 0, 128, 0.2);
+            transition: all 1s ease;
         }
 
         .track-name {
@@ -77,11 +80,13 @@
             font-size: 1.8rem;
             color: #00ffff;
             margin-bottom: 10px;
+            transition: all 1s ease;
         }
 
         .track-number {
             font-size: 1rem;
             color: rgba(255, 255, 255, 0.6);
+            transition: all 1s ease;
         }
 
         /* Visualization Modes */
@@ -119,6 +124,7 @@
             border: 2px solid rgba(0, 255, 255, 0.2);
             overflow: hidden;
             margin-bottom: 20px;
+            transition: all 1s ease;
         }
 
         .viz-canvas {
@@ -135,6 +141,7 @@
             padding: 10px 15px;
             border-radius: 10px;
             font-size: 0.8rem;
+            transition: all 1s ease;
         }
 
         /* Controls */
@@ -147,6 +154,7 @@
             background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
             border: 1px solid rgba(255, 0, 128, 0.2);
+            transition: all 1s ease;
         }
 
         .control-btn {
@@ -181,30 +189,36 @@
             background: linear-gradient(135deg, #ff4da6, #ff0080);
         }
 
-        /* Volume Slider */
-        .volume-control {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        /* Mood indicator */
+        .mood-indicator {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 0, 128, 0.2);
+            transition: all 0.5s ease;
         }
 
-        .volume-slider {
-            width: 100px;
-            height: 8px;
-            -webkit-appearance: none;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-            outline: none;
+        .mood-name {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            transition: all 1s ease;
         }
 
-        .volume-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            background: #00ffff;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        .mood-description {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+            transition: all 1s ease;
+        }
+
+        .gesture-hint {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 10px;
+            font-style: italic;
+            transition: all 1s ease;
         }
 
         /* Status indicators */
@@ -215,6 +229,7 @@
             background: rgba(0, 0, 0, 0.3);
             border-radius: 10px;
             margin-top: 20px;
+            transition: all 1s ease;
         }
 
         .status-item {
@@ -225,12 +240,14 @@
             font-size: 0.8rem;
             color: rgba(255, 255, 255, 0.5);
             margin-bottom: 5px;
+            transition: all 1s ease;
         }
 
         .status-value {
             font-family: 'Orbitron', monospace;
             font-size: 1.2rem;
             color: #00ffff;
+            transition: all 1s ease;
         }
 
         /* Beat indicator */
@@ -257,11 +274,94 @@
             pointer-events: none;
             z-index: -1;
         }
+
+        /* Bubbles canvas */
+        #bubbles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+        }
+
+        #bubbles-canvas.active {
+            display: block;
+        }
+
+        /* Camera Feed */
+        .camera-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 240px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            overflow: hidden;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .camera-container.hidden .camera-feed,
+        .camera-container.hidden .camera-status {
+            display: none;
+        }
+
+        .camera-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .camera-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.8rem;
+            color: #00ffff;
+        }
+
+        .camera-toggle {
+            padding: 4px 12px;
+            background: rgba(255, 0, 128, 0.2);
+            border: 1px solid rgba(255, 0, 128, 0.5);
+            border-radius: 12px;
+            color: #fff;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.75rem;
+            transition: all 0.3s ease;
+        }
+
+        .camera-toggle:hover {
+            background: rgba(255, 0, 128, 0.4);
+            transform: scale(1.05);
+        }
+
+        .camera-feed {
+            width: 100%;
+            height: auto;
+            display: block;
+            background: #000;
+        }
+
+        .camera-status {
+            padding: 15px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+            font-size: 0.8rem;
+        }
     </style>
 </head>
 
 <body>
     <canvas id="particles-canvas"></canvas>
+    <canvas id="bubbles-canvas"></canvas>
 
     <div class="container">
         <header class="header">
@@ -271,6 +371,27 @@
         <div class="track-info">
             <div class="track-name" id="track-name">Track 01</div>
             <div class="track-number" id="track-number">Track 1 / 10</div>
+        </div>
+
+        <div class="mood-indicator" id="mood-indicator">
+            <div class="mood-name" id="mood-name">Dark Mode</div>
+            <div class="mood-description" id="mood-description">Night time theme</div>
+            <div class="gesture-hint">Use hand gestures: ✋ Open Palm = Light | ✊ Closed Fist = Dark</div>
+        </div>
+
+        <div class="camera-container" id="camera-container">
+            <div class="camera-header">
+                <div class="camera-title">📹 Camera Feed</div>
+                <button class="camera-toggle" id="camera-toggle">Hide</button>
+            </div>
+            <div class="camera-status" id="camera-status" style="display: none;">
+                Loading camera feed...
+            </div>
+            <img id="camera-feed" 
+                 class="camera-feed"
+                 src="{{ url_for('video_feed') }}" 
+                 alt="Camera Feed"
+                 style="display: block;">
         </div>
 
         <div class="viz-tabs">
@@ -314,26 +435,25 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
-        // Socket connection
         const socket = io();
-
-        // Canvas setup
         const canvas = document.getElementById('viz-canvas');
         const ctx = canvas.getContext('2d');
         const particlesCanvas = document.getElementById('particles-canvas');
         const particlesCtx = particlesCanvas.getContext('2d');
+        const bubblesCanvas = document.getElementById('bubbles-canvas');
+        const bubblesCtx = bubblesCanvas.getContext('2d');
 
-        // Resize canvases
         function resizeCanvases() {
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
             particlesCanvas.width = window.innerWidth;
             particlesCanvas.height = window.innerHeight;
+            bubblesCanvas.width = window.innerWidth;
+            bubblesCanvas.height = window.innerHeight;
         }
         resizeCanvases();
         window.addEventListener('resize', resizeCanvases);
 
-        // State
         let currentMode = 'waveform';
         let audioData = {
             waveform: new Array(64).fill(0),
@@ -342,17 +462,181 @@
             mid_level: 0,
             high_level: 0,
             beat_detected: false,
-            is_playing: false
+            is_playing: false,
+            mood: {
+                mood: 'dark',
+                mood_config: {
+                    name: 'Dark',
+                    gradient: ['#0a0a1a', '#1a0a2e', '#0a1a2e'],
+                    primary: '#ff0080',
+                    secondary: '#00ffff',
+                    text: '#ffffff',
+                    emoji: '🌙',
+                    description: 'Vaporwave night theme'
+                },
+                effects_enabled: false
+            }
         };
 
-        // Particles for audience mode
+        // === ENHANCED MOOD LIGHTING FUNCTION ===
+        function applyMoodLighting(moodConfig) {
+            if (!moodConfig) return;
+                
+            console.log('[MoodLighting] Applying theme:', moodConfig.name);
+            
+            // === FORCE BACKGROUND OVERRIDE ===
+            const gradient = moodConfig.gradient || ['#0a0a1a', '#1a0a2e', '#0a1a2e'];
+            const gradientString = `linear-gradient(135deg, ${gradient[0]} 0%, ${gradient[1]} 50%, ${gradient[2]} 100%)`;
+            
+            document.body.style.setProperty('background', gradientString, 'important');
+            document.body.style.setProperty('background-attachment', 'fixed', 'important');
+            document.body.style.setProperty('background-size', 'cover', 'important');
+            
+            console.log('[MoodLighting] ✅ Background set:', gradient);
+    
+            // === TEXT COLORS ===
+            const textColor = moodConfig.text || '#ffffff';
+            document.body.style.color = textColor;
+            
+            // === THEME-SPECIFIC STYLING ===
+            const isLight = moodConfig.name === 'Light';
+            
+            // Panels
+            const panelBg = isLight ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.3)';
+            const panelBorder = isLight ? 'rgba(74, 144, 226, 0.3)' : 'rgba(255, 0, 128, 0.2)';
+            
+            document.querySelectorAll('.track-info, .controls').forEach(panel => {
+                panel.style.background = panelBg;
+                panel.style.borderColor = panelBorder;
+            });
+            
+            // Viz container
+            const vizBg = isLight ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.4)';
+            const vizBorder = isLight ? 'rgba(74, 144, 226, 0.4)' : 'rgba(0, 255, 255, 0.2)';
+            document.querySelector('.viz-container').style.background = vizBg;
+            document.querySelector('.viz-container').style.borderColor = vizBorder;
+            
+            // Viz overlay
+            const overlayBg = isLight ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.6)';
+            document.querySelector('.viz-overlay').style.background = overlayBg;
+            document.querySelector('.viz-overlay').style.color = textColor;
+            
+            // Status bar
+            const statusBg = isLight ? 'rgba(240, 244, 248, 0.9)' : 'rgba(0, 0, 0, 0.3)';
+            document.querySelector('.status-bar').style.background = statusBg;
+            
+            // === HEADER ===
+            document.querySelector('.header').style.borderBottomColor = `${moodConfig.primary}33`;
+            
+            const headerTitle = document.querySelector('.header h1');
+            headerTitle.style.background = `linear-gradient(90deg, ${moodConfig.primary}, ${moodConfig.secondary}, ${moodConfig.primary})`;
+            headerTitle.style.backgroundSize = '200% auto';
+            headerTitle.style.webkitBackgroundClip = 'text';
+            headerTitle.style.webkitTextFillColor = 'transparent';
+            
+            // === MOOD INDICATOR ===
+            const moodIndicator = document.getElementById('mood-indicator');
+            if (moodIndicator) {
+                if (isLight) {
+                    moodIndicator.style.background = 'rgba(255, 255, 255, 0.95)';
+                    moodIndicator.style.boxShadow = `0 4px 20px ${moodConfig.glow || 'rgba(74, 144, 226, 0.3)'}, 0 2px 8px rgba(0,0,0,0.08)`;
+                } else {
+                    moodIndicator.style.background = 'rgba(10, 10, 20, 0.8)';
+                    moodIndicator.style.boxShadow = `0 4px 30px ${moodConfig.glow || 'rgba(255, 0, 128, 0.5)'}, 0 0 40px ${moodConfig.glow || 'rgba(255, 0, 128, 0.5)'}`;
+                }
+                moodIndicator.style.borderColor = moodConfig.primary;
+            }
+            
+            const moodName = document.getElementById('mood-name');
+            if (moodName) {
+                moodName.textContent = `${moodConfig.emoji || ''} ${moodConfig.name || 'Default'} Mode`;
+                moodName.style.color = moodConfig.primary;
+                moodName.style.textShadow = isLight ? 'none' : `0 0 20px ${moodConfig.glow || 'rgba(255, 0, 128, 0.5)'}`;
+            }
+            
+            const moodDescription = document.getElementById('mood-description');
+            if (moodDescription) {
+                moodDescription.textContent = moodConfig.description || '';
+                moodDescription.style.color = isLight ? 'rgba(44, 62, 80, 0.7)' : 'rgba(255, 255, 255, 0.6)';
+            }
+            
+            const gestureHint = document.querySelector('.gesture-hint');
+            if (gestureHint) {
+                gestureHint.style.color = isLight ? 'rgba(44, 62, 80, 0.5)' : 'rgba(255, 255, 255, 0.4)';
+            }
+            
+            // === TRACK NAME ===
+            const trackName = document.querySelector('.track-name');
+            if (trackName) {
+                trackName.style.color = moodConfig.primary;
+                trackName.style.textShadow = isLight ? 'none' : `0 0 15px ${moodConfig.glow || 'rgba(0, 255, 255, 0.5)'}`;
+            }
+            
+            // === TRACK NUMBER ===
+            const trackNumber = document.querySelector('.track-number');
+            if (trackNumber) {
+                trackNumber.style.color = isLight ? 'rgba(44, 62, 80, 0.6)' : 'rgba(255, 255, 255, 0.6)';
+            }
+            
+            // === VISUALIZATION TABS ===
+            document.querySelectorAll('.viz-tab').forEach(tab => {
+                const isActive = tab.classList.contains('active');
+                
+                if (isLight) {
+                    tab.style.background = isActive ? 'rgba(74, 144, 226, 0.15)' : 'rgba(255, 255, 255, 0.4)';
+                    tab.style.borderColor = isActive ? moodConfig.primary : 'rgba(74, 144, 226, 0.3)';
+                    tab.style.color = textColor;
+                } else {
+                    tab.style.background = isActive ? 'rgba(255, 0, 128, 0.3)' : 'rgba(255, 255, 255, 0.1)';
+                    tab.style.borderColor = isActive ? moodConfig.primary : 'rgba(255, 0, 128, 0.3)';
+                    tab.style.color = '#fff';
+                }
+            });
+            
+            // === CONTROLS ===
+            document.querySelectorAll('.control-btn').forEach(btn => {
+                if (btn.classList.contains('play-btn')) {
+                    if (isLight) {
+                        btn.style.background = `linear-gradient(135deg, ${moodConfig.primary}, ${moodConfig.secondary})`;
+                    } else {
+                        btn.style.background = 'linear-gradient(135deg, #ff0080, #ff4da6)';
+                    }
+                } else {
+                    if (isLight) {
+                        btn.style.background = 'rgba(74, 144, 226, 0.1)';
+                        btn.style.borderColor = moodConfig.primary;
+                        btn.style.color = moodConfig.primary;
+                    } else {
+                        btn.style.background = 'rgba(255, 0, 128, 0.1)';
+                        btn.style.borderColor = 'rgba(255, 0, 128, 0.5)';
+                        btn.style.color = '#fff';
+                    }
+                }
+            });
+            
+            // === STATUS VALUES ===
+            document.querySelectorAll('.status-value').forEach(val => {
+                val.style.color = moodConfig.primary;
+            });
+            
+            document.querySelectorAll('.status-label').forEach(label => {
+                label.style.color = isLight ? 'rgba(44, 62, 80, 0.6)' : 'rgba(255, 255, 255, 0.5)';
+            });
+            
+            console.log('[MoodLighting] ✅ Theme applied successfully!', {
+                name: moodConfig.name,
+                primary: moodConfig.primary,
+                background: gradient[0]
+            });
+        }
+
+        // Particles
         let particles = [];
+        let bubbles = [];
+        let bubblesActive = false;
 
         class Particle {
-            constructor() {
-                this.reset();
-            }
-
+            constructor() { this.reset(); }
             reset() {
                 this.x = Math.random() * particlesCanvas.width;
                 this.y = particlesCanvas.height + 10;
@@ -361,25 +645,16 @@
                 this.size = Math.random() * 4 + 2;
                 this.life = 1;
                 this.decay = Math.random() * 0.02 + 0.01;
-                this.hue = Math.random() * 60 + 300; // Pink to cyan
+                this.hue = Math.random() * 60 + 300;
             }
-
             update(bassLevel) {
                 this.x += this.vx;
                 this.y += this.vy;
-                this.vy += 0.05; // Gravity
+                this.vy += 0.05;
                 this.life -= this.decay;
-
-                // Bass makes particles jump
-                if (bassLevel > 0.6) {
-                    this.vy -= bassLevel * 0.5;
-                }
-
-                if (this.life <= 0 || this.y > particlesCanvas.height) {
-                    this.reset();
-                }
+                if (bassLevel > 0.6) this.vy -= bassLevel * 0.5;
+                if (this.life <= 0 || this.y > particlesCanvas.height) this.reset();
             }
-
             draw(ctx) {
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -388,34 +663,100 @@
             }
         }
 
-        // Initialize particles
-        for (let i = 0; i < 100; i++) {
-            particles.push(new Particle());
+        for (let i = 0; i < 100; i++) particles.push(new Particle());
+
+        class Bubble {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * bubblesCanvas.width;
+                this.y = bubblesCanvas.height + 20;
+                this.vx = (Math.random() - 0.5) * 1;
+                this.vy = -(Math.random() * 2 + 2);
+                this.size = Math.random() * 30 + 10;
+                this.life = 1;
+                this.decay = Math.random() * 0.005 + 0.002;
+                this.wobble = Math.random() * 2;
+                this.wobbleSpeed = Math.random() * 0.05 + 0.02;
+            }
+            update() {
+                this.wobble += this.wobbleSpeed;
+                this.x += Math.sin(this.wobble) * 0.5 + this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+                if (this.life <= 0 || this.y < -this.size) this.reset();
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.life * 0.7;
+                const gradient = ctx.createRadialGradient(
+                    this.x - this.size * 0.3, this.y - this.size * 0.3, 0,
+                    this.x, this.y, this.size
+                );
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+                gradient.addColorStop(0.5, 'rgba(173, 216, 230, 0.4)');
+                gradient.addColorStop(1, 'rgba(135, 206, 250, 0.2)');
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.x - this.size * 0.3, this.y - this.size * 0.3, this.size * 0.3, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.restore();
+            }
         }
 
-        // Visualization modes
+        function activateBubbles() {
+            bubbles = [];
+            for (let i = 0; i < 30; i++) bubbles.push(new Bubble());
+            bubblesActive = true;
+            bubblesCanvas.classList.add('active');
+            setTimeout(() => {
+                bubblesActive = false;
+                bubblesCanvas.classList.remove('active');
+                bubbles = [];
+            }, 5000);
+        }
+
+        function updateBubbles() {
+            if (!bubblesActive || bubbles.length === 0) return;
+            bubblesCtx.clearRect(0, 0, bubblesCanvas.width, bubblesCanvas.height);
+            bubbles.forEach(bubble => {
+                bubble.update();
+                bubble.draw(bubblesCtx);
+            });
+        }
+
+        // Visualization modes (keeping your existing drawing functions)
         function drawWaveform() {
-            const { waveform, bass_level, beat_detected } = audioData;
+            const { waveform, bass_level, beat_detected, mood } = audioData;
             const width = canvas.width;
             const height = canvas.height;
             const centerY = height / 2;
+            const primary = mood?.mood_config?.primary || '#ff0080';
+            const secondary = mood?.mood_config?.secondary || '#00ffff';
+            const isLight = mood?.mood_config?.name === 'Light';
 
-            // Clear
-            ctx.fillStyle = 'rgba(10, 10, 30, 0.3)';
+            // Theme-aware canvas background
+            ctx.fillStyle = isLight ? 'rgba(240, 244, 248, 0.5)' : 'rgba(10, 10, 30, 0.3)';
             ctx.fillRect(0, 0, width, height);
 
-            // Glow effect on beat
             if (beat_detected) {
                 ctx.shadowBlur = 30;
-                ctx.shadowColor = '#ff0080';
+                ctx.shadowColor = primary;
             } else {
                 ctx.shadowBlur = 10;
-                ctx.shadowColor = '#00ffff';
+                ctx.shadowColor = secondary;
             }
 
-            // Draw waveform
             ctx.beginPath();
-            ctx.strokeStyle = beat_detected ? '#ff0080' : '#00ffff';
+            ctx.strokeStyle = beat_detected ? primary : secondary;
             ctx.lineWidth = 3;
 
             const sliceWidth = width / waveform.length;
@@ -424,21 +765,15 @@
             for (let i = 0; i < waveform.length; i++) {
                 const v = waveform[i];
                 const y = centerY + v * (height / 2) * 0.8;
-
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
                 x += sliceWidth;
             }
-
             ctx.stroke();
 
-            // Mirror effect
             ctx.globalAlpha = 0.3;
             ctx.beginPath();
-            ctx.strokeStyle = '#ff0080';
+            ctx.strokeStyle = primary;
             x = 0;
             for (let i = 0; i < waveform.length; i++) {
                 const v = -waveform[i];
@@ -449,16 +784,17 @@
             }
             ctx.stroke();
             ctx.globalAlpha = 1;
-
             ctx.shadowBlur = 0;
         }
 
         function drawSpectrum() {
-            const { frequencies, beat_detected } = audioData;
+            const { frequencies, beat_detected, mood } = audioData;
             const width = canvas.width;
             const height = canvas.height;
+            const isLight = mood?.mood_config?.name === 'Light';
 
-            ctx.fillStyle = 'rgba(10, 10, 30, 0.3)';
+            // Theme-aware canvas background
+            ctx.fillStyle = isLight ? 'rgba(240, 244, 248, 0.5)' : 'rgba(10, 10, 30, 0.3)';
             ctx.fillRect(0, 0, width, height);
 
             const barWidth = width / frequencies.length - 2;
@@ -468,20 +804,17 @@
                 const barHeight = frequencies[i] * height * 0.8;
                 const x = i * (barWidth + gap);
                 const y = height - barHeight;
-
-                // Gradient based on frequency
-                const hue = (i / frequencies.length) * 180 + 270; // Pink to cyan
+                const hue = (i / frequencies.length) * 180 + 270;
                 const gradient = ctx.createLinearGradient(x, y, x, height);
                 gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, 1)`);
                 gradient.addColorStop(1, `hsla(${hue}, 100%, 30%, 0.5)`);
-
                 ctx.fillStyle = gradient;
                 ctx.fillRect(x, y, barWidth, barHeight);
 
-                // Glow on beat
                 if (beat_detected && i < 8) {
+                    const primary = audioData.mood?.mood_config?.primary || '#ff0080';
                     ctx.shadowBlur = 20;
-                    ctx.shadowColor = '#ff0080';
+                    ctx.shadowColor = primary;
                     ctx.fillRect(x, y, barWidth, barHeight);
                     ctx.shadowBlur = 0;
                 }
@@ -489,14 +822,15 @@
         }
 
         function drawAudience() {
-            const { frequencies, bass_level, mid_level, high_level, beat_detected } = audioData;
+            const { frequencies, bass_level, beat_detected, mood } = audioData;
             const width = canvas.width;
             const height = canvas.height;
+            const isLight = mood?.mood_config?.name === 'Light';
 
-            ctx.fillStyle = 'rgba(10, 10, 30, 0.2)';
+            // Theme-aware canvas background
+            ctx.fillStyle = isLight ? 'rgba(240, 244, 248, 0.3)' : 'rgba(10, 10, 30, 0.2)';
             ctx.fillRect(0, 0, width, height);
 
-            // RGB Bars bouncing with bass
             const barCount = 16;
             const barWidth = width / barCount - 4;
 
@@ -505,25 +839,16 @@
                 const barHeight = freq * height * 0.7 + bass_level * height * 0.2;
                 const x = i * (barWidth + 4) + 2;
                 const y = height - barHeight;
-
-                // RGB cycling colors
                 const time = Date.now() / 1000;
                 const hue = (i / barCount) * 360 + time * 50;
-
-                // Gradient bar
                 const gradient = ctx.createLinearGradient(x, y, x, height);
                 gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, 1)`);
                 gradient.addColorStop(0.5, `hsla(${hue + 30}, 100%, 50%, 0.8)`);
                 gradient.addColorStop(1, `hsla(${hue + 60}, 100%, 40%, 0.3)`);
-
                 ctx.fillStyle = gradient;
-
-                // Rounded bars
                 ctx.beginPath();
                 ctx.roundRect(x, y, barWidth, barHeight, 5);
                 ctx.fill();
-
-                // Reflection
                 ctx.globalAlpha = 0.2;
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
@@ -532,32 +857,34 @@
                 ctx.globalAlpha = 1;
             }
 
-            // Beat flash overlay
             if (beat_detected) {
-                ctx.fillStyle = 'rgba(255, 0, 128, 0.1)';
+                const primary = audioData.mood?.mood_config?.primary || '#ff0080';
+                const r = parseInt(primary.slice(1, 3), 16);
+                const g = parseInt(primary.slice(3, 5), 16);
+                const b = parseInt(primary.slice(5, 7), 16);
+                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.1)`;
                 ctx.fillRect(0, 0, width, height);
             }
         }
 
         function drawParticlesMode() {
-            const { bass_level, beat_detected } = audioData;
+            const { bass_level, beat_detected, mood } = audioData;
             const width = canvas.width;
             const height = canvas.height;
+            const isLight = mood?.mood_config?.name === 'Light';
 
-            ctx.fillStyle = 'rgba(10, 10, 30, 0.1)';
+            // Theme-aware canvas background
+            ctx.fillStyle = isLight ? 'rgba(240, 244, 248, 0.2)' : 'rgba(10, 10, 30, 0.1)';
             ctx.fillRect(0, 0, width, height);
 
-            // Central pulsing circle
             const time = Date.now() / 1000;
             const pulseSize = 50 + bass_level * 100;
             const centerX = width / 2;
             const centerY = height / 2;
 
-            // Multiple rings
             for (let i = 0; i < 5; i++) {
                 const ringSize = pulseSize + i * 40 + Math.sin(time * 3 + i) * 20;
                 const hue = 300 + i * 30;
-
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, ringSize, 0, Math.PI * 2);
                 ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${0.5 - i * 0.1})`;
@@ -565,14 +892,12 @@
                 ctx.stroke();
             }
 
-            // Particle burst on beat
             if (beat_detected) {
                 for (let i = 0; i < 20; i++) {
                     const angle = (i / 20) * Math.PI * 2;
                     const dist = 100 + Math.random() * 100;
                     const px = centerX + Math.cos(angle) * dist;
                     const py = centerY + Math.sin(angle) * dist;
-
                     ctx.beginPath();
                     ctx.arc(px, py, 5, 0, Math.PI * 2);
                     ctx.fillStyle = `hsla(${300 + Math.random() * 60}, 100%, 60%, 0.8)`;
@@ -582,9 +907,12 @@
         }
 
         function updateBackgroundParticles() {
-            particlesCtx.fillStyle = 'rgba(10, 10, 26, 0.1)';
+            const isLight = audioData.mood?.mood_config?.name === 'Light';
+            
+            // Theme-aware background particles
+            particlesCtx.fillStyle = isLight ? 'rgba(240, 244, 248, 0.1)' : 'rgba(10, 10, 26, 0.1)';
             particlesCtx.fillRect(0, 0, particlesCanvas.width, particlesCanvas.height);
-
+            
             if (audioData.is_playing) {
                 particles.forEach(p => {
                     p.update(audioData.bass_level);
@@ -593,53 +921,79 @@
             }
         }
 
-        // Animation loop
         function animate() {
             switch (currentMode) {
-                case 'waveform':
-                    drawWaveform();
-                    break;
-                case 'spectrum':
-                    drawSpectrum();
-                    break;
-                case 'audience':
-                    drawAudience();
-                    break;
-                case 'particles':
-                    drawParticlesMode();
-                    break;
+                case 'waveform': drawWaveform(); break;
+                case 'spectrum': drawSpectrum(); break;
+                case 'audience': drawAudience(); break;
+                case 'particles': drawParticlesMode(); break;
             }
-
             updateBackgroundParticles();
+            updateBubbles();
             requestAnimationFrame(animate);
         }
         animate();
+
+        // Camera feed
+        const cameraFeed = document.getElementById('camera-feed');
+        const cameraStatus = document.getElementById('camera-status');
+        const cameraContainer = document.getElementById('camera-container');
+        const cameraToggle = document.getElementById('camera-toggle');
+        
+        if (cameraFeed && cameraToggle) {
+            let cameraVisible = true;
+            
+            cameraFeed.onload = function() {
+                cameraStatus.style.display = 'none';
+                cameraFeed.style.display = 'block';
+            };
+            
+            cameraFeed.onerror = function() {
+                cameraStatus.textContent = 'Camera stream error';
+                cameraStatus.style.display = 'block';
+            };
+            
+            cameraToggle.addEventListener('click', () => {
+                cameraVisible = !cameraVisible;
+                if (cameraVisible) {
+                    cameraContainer.classList.remove('hidden');
+                    cameraToggle.textContent = 'Hide';
+                } else {
+                    cameraContainer.classList.add('hidden');
+                    cameraToggle.textContent = 'Show';
+                }
+            });
+        }
 
         // Socket events
         socket.on('audio_update', (data) => {
             audioData = { ...audioData, ...data };
 
-            // Update UI
+            if (data.mood && data.mood.mood_config) {
+                applyMoodLighting(data.mood.mood_config);
+            }
+
+            if (data.mood && data.mood.bubbles_active && !bubblesActive) {
+                activateBubbles();
+            }
+
             document.getElementById('track-name').textContent = data.track_name || 'Track';
             document.getElementById('track-number').textContent = `Track ${data.track_number} / ${data.track_total}`;
             document.getElementById('volume-display').textContent = `${data.volume}%`;
             document.getElementById('tempo-display').textContent = `${data.tempo?.toFixed(1) || '1.0'}x`;
             document.getElementById('bass-level').textContent = `${Math.round(data.bass_level * 100)}%`;
 
-            // Status
             let status = 'STOPPED';
             if (data.is_playing && !data.is_paused) status = 'PLAYING';
             else if (data.is_paused) status = 'PAUSED';
             document.getElementById('status-display').textContent = status;
 
-            // Beat indicator
             const beatIndicator = document.getElementById('beat-indicator');
             if (data.beat_detected) {
                 beatIndicator.classList.add('active');
                 setTimeout(() => beatIndicator.classList.remove('active'), 100);
             }
 
-            // Update play button
             const playBtn = document.getElementById('play-btn');
             playBtn.textContent = data.is_playing && !data.is_paused ? '⏸' : '▶';
         });
@@ -654,36 +1008,31 @@
         });
 
         // Control buttons
-        document.getElementById('play-btn').addEventListener('click', () => {
+        document.getElementById('play-btn').addEventListener('click', async () => {
             const action = audioData.is_playing && !audioData.is_paused ? 'pause' : 'play';
-            fetch(`/api/control/${action}`, { method: 'POST' });
+            await fetch(`/api/control/${action}`, { method: 'POST' });
         });
 
-        document.getElementById('next-btn').addEventListener('click', () => {
-            fetch('/api/control/next', { method: 'POST' });
+        document.getElementById('next-btn').addEventListener('click', async () => {
+            await fetch('/api/control/next', { method: 'POST' });
         });
 
-        document.getElementById('prev-btn').addEventListener('click', () => {
-            fetch('/api/control/prev', { method: 'POST' });
+        document.getElementById('prev-btn').addEventListener('click', async () => {
+            await fetch('/api/control/prev', { method: 'POST' });
         });
 
-        document.getElementById('vol-up-btn').addEventListener('click', () => {
-            fetch('/api/control/volume_up', { method: 'POST' });
+        document.getElementById('vol-up-btn').addEventListener('click', async () => {
+            await fetch('/api/control/volume_up', { method: 'POST' });
         });
 
-        document.getElementById('vol-down-btn').addEventListener('click', () => {
-            fetch('/api/control/volume_down', { method: 'POST' });
+        document.getElementById('vol-down-btn').addEventListener('click', async () => {
+            await fetch('/api/control/volume_down', { method: 'POST' });
         });
 
         // Scratch interaction
         let isDragging = false;
         let lastX = 0;
-
-        canvas.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            lastX = e.clientX;
-        });
-
+        canvas.addEventListener('mousedown', (e) => { isDragging = true; lastX = e.clientX; });
         canvas.addEventListener('mousemove', (e) => {
             if (isDragging) {
                 const dx = e.clientX - lastX;
@@ -691,9 +1040,11 @@
                 lastX = e.clientX;
             }
         });
-
         canvas.addEventListener('mouseup', () => isDragging = false);
         canvas.addEventListener('mouseleave', () => isDragging = false);
+
+        socket.on('connect', () => console.log('[WebUI] Connected'));
+        socket.on('disconnect', () => console.log('[WebUI] Disconnected'));
     </script>
 </body>
 

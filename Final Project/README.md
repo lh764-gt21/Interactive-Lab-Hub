@@ -7,8 +7,16 @@ A multi-modal DJ controller for Raspberry Pi that uses gesture sensors, touch in
 - **APDS-9960 Gesture Control**: Swipe gestures to navigate tracks and control volume
 - **MPR121 Touch Pads**: Capacitive touch pads to select specific tracks (1-10)
 - **Voice Control**: Say "play" or "pause" to control playback using offline speech recognition
+- **MediaPipe Hand Gestures**: Control mood lighting and effects with hand gestures 👋✨
+  - 5 distinct mood themes (Energetic, Chill, Party, Relaxed, Default)
+  - Real-time mood changes on web UI and OLED display
+  - Effects toggle (bass boost) with fist gesture
+  - Playback speed control via finger distance
 - **TFT Display**: Retro vaporwave-style visual feedback on PiTFT display
+  - Color-coded mood indicators
+  - Gesture feedback with emojis
 - **Web Visualization**: Real-time audio visualizations accessible from any browser
+  - Dynamic background colors based on mood
   - Waveform display with beat detection
   - Frequency spectrum analyzer
   - Audience mode with RGB bars
@@ -22,6 +30,7 @@ A multi-modal DJ controller for Raspberry Pi that uses gesture sensors, touch in
 - APDS-9960 Gesture Sensor (I2C address: 0x39)
 - PiTFT Display (SPI)
 - USB Microphone (for voice control)
+- USB Camera (for MediaPipe hand tracking)
 - Speakers or headphones (3.5mm audio output)
 - MPR121 Capacitive Touch Sensor (I2C address: 0x5A)
 
@@ -135,6 +144,20 @@ Then open `http://<raspberry-pi-ip>:5000` in any browser to see the visualizatio
 | Pad 0-9  | Select track 1-10   |
 | Pad 10   | Play/Pause toggle   |
 | Pad 11   | Stop playback       |
+
+#### MediaPipe Gestures (Light/Dark Theme + Bubbles)
+| Gesture | Type | Action | Effect |
+|---------|------|--------|--------|
+| ✋ OPEN PALM | Hand | Light theme | ☀️ Day time UI (bright) |
+| ✊ CLOSED FIST | Hand | Dark theme | 🌙 Night time UI (dark) |
+| 💨 BLOW | Mouth | Activate bubbles | 💭 30 bubbles for 5 seconds |
+
+**Tips:**
+- Hold hand gestures for 2 seconds for confirmation
+- Keep hand 1-2 feet from camera
+- Open mouth wide to blow (triggers bubble effect)
+- Use good lighting for best detection
+- Watch OLED display for visual feedback
 
 #### Voice Commands
 | Command  | Action              |

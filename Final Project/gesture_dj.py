@@ -1,21 +1,14 @@
 """
-Gesture DJ - Main Integration System
-Combines APDS gestures, MPR121 touch, voice control, audio engine, and display
-With optional web visualization interface
+Gesture DJ - Main Application with OLED Display
+Uses gesture_dj_core.py for logic, handles display and web interface
 """
 
 import time
 import sys
 import signal
 import threading
-from audio_engine import AudioEngine
-from apds_gesture import APDSGesture
-from mpr121_touch import MPR121Touch
-from voice_control import VoiceControl
 from display import Display
-
-# MediaPipe imports (kept but disabled)
-# from hand_tracker import HandTracker
+from gesture_dj_core import GestureDJCore
 
 # Web server (optional)
 try:
@@ -26,30 +19,26 @@ except ImportError:
 
 
 class GestureDJ:
-    def __init__(self):
+    def __init__(self, web_mode=False):
         """
-        Initialize Gesture DJ system
+        Initialize Gesture DJ with display
+        Args:
+            web_mode: If True, run camera in headless mode (browser only)
         """
         print("Initializing Gesture DJ...")
         print("=" * 50)
         
         self.running = False
+        self.web_mode = web_mode
         
-        # Initialize all modules
-        self.audio = AudioEngine(tracks_dir="tracks", effects_dir="effects")
-        self.apds = APDSGesture()
-        self.mpr121 = MPR121Touch()
-        self.voice = VoiceControl()
+        # Initialize core logic
+        self.core = GestureDJCore(
+            enable_camera=True, 
+            headless_camera=web_mode
+        )
         
-        # MediaPipe hand tracker (disabled)
-        # self.hand_tracker = HandTracker(headless=False)
-        # self.last_pose_processed = None
-        
-        # Display: use hardware TFT
+        # Display: use hardware TFT (OLED)
         self.display = Display(prefer_framebuffer=False)
-        
-        # Load first track
-        self.audio.load_track()
         
         # Show welcome message
         self.display.show_message("GESTURE DJ")
@@ -59,159 +48,10 @@ class GestureDJ:
         print("Gesture DJ Ready!")
         print("=" * 50)
     
-    def handle_apds_gesture(self, gesture):
-        """Process APDS gesture and trigger audio action"""
-        if not gesture:
-            return
-        
-        print(f"[APDS] {gesture}")
-        
-        if gesture == 'swipe_right':
-            # Next track and auto-play
-            self.audio.stop()
-            track = self.audio.next_track()
-            self.audio.play()
-            self.display.show_message(f"-> Track {track['id']}")
-            self._update_web_state()
-            time.sleep(0.5)
-        
-        elif gesture == 'swipe_left':
-            # Previous track and auto-play
-            self.audio.stop()
-            track = self.audio.prev_track()
-            self.audio.play()
-            self.display.show_message(f"<- Track {track['id']}")
-            self._update_web_state()
-            time.sleep(0.5)
-        
-        elif gesture == 'swipe_up':
-            # Volume up
-            volume = self.audio.volume_up(0.1)
-            self.display.show_message(f"Volume: {int(volume * 100)}%")
-            self._update_web_state()
-            time.sleep(0.3)
-        
-        elif gesture == 'swipe_down':
-            # Volume down
-            volume = self.audio.volume_down(0.1)
-            self.display.show_message(f"Volume: {int(volume * 100)}%")
-            self._update_web_state()
-            time.sleep(0.3)
-    
-    def handle_mpr121_touch(self, action):
-        """Process MPR121 touch and trigger audio action"""
-        if not action:
-            return
-        
-        if action['type'] == 'track':
-            track_num = action['value']
-            print(f"[MPR121] Track {track_num} selected")
-            self.audio.stop()
-            track = self.audio.select_track(track_num)
-            if track:
-                self.audio.play()
-                self.display.show_message(f"Track {track['id']}")
-            self._update_web_state()
-            time.sleep(0.3)
-        
-        elif action['type'] == 'control':
-            if action['value'] == 'play_pause':
-                print("[MPR121] Play/Pause")
-                if self.audio.is_paused:
-                    self.audio.resume()
-                    self.display.show_message("> RESUME")
-                elif self.audio.is_playing:
-                    self.audio.pause()
-                    self.display.show_message("|| PAUSE")
-                else:
-                    self.audio.play()
-                    self.display.show_message("> PLAY")
-                self._update_web_state()
-                time.sleep(0.3)
-            
-            elif action['value'] == 'stop':
-                print("[MPR121] Stop")
-                self.audio.stop()
-                self.audio.load_track()
-                self.display.show_message("[] STOP")
-                self._update_web_state()
-                time.sleep(0.3)
-    
-    def handle_voice_command(self, command):
-        """Process voice command and trigger audio action (play/pause only)"""
-        if not command:
-            return
-        
-        print(f"[Voice] Command: {command}")
-        
-        if command == 'play':
-            if not self.audio.is_playing or self.audio.is_paused:
-                if self.audio.is_paused:
-                    self.audio.resume()
-                else:
-                    self.audio.play()
-                self.display.show_message("> PLAY")
-            self._update_web_state()
-            time.sleep(0.3)
-        
-        elif command == 'pause':
-            if self.audio.is_playing and not self.audio.is_paused:
-                self.audio.pause()
-                self.display.show_message("|| PAUSE")
-            self._update_web_state()
-            time.sleep(0.3)
-    
-    # MediaPipe hand gesture handler (kept but disabled)
-    # def handle_hand_gesture(self, hand_data):
-    #     """Process MediaPipe hand gesture and trigger action"""
-    #     if not hand_data:
-    #         return
-    #     
-    #     pose = hand_data['pose']
-    #     finger_count = hand_data['finger_count']
-    #     gesture_confirmed = hand_data.get('gesture_confirmed', False)
-    #     
-    #     if gesture_confirmed:
-    #         print(f"[MediaPipe] {pose} ({finger_count} fingers) - CONFIRMED")
-    #     
-    #     processed = False
-    #     if gesture_confirmed and pose != self.last_pose_processed:
-    #         if pose == 'palm':
-    #             if self.audio.is_paused:
-    #                 self.audio.resume()
-    #                 self.display.show_message("> RESUME")
-    #             elif self.audio.is_playing:
-    #                 self.audio.pause()
-    #                 self.display.show_message("|| PAUSE")
-    #             else:
-    #                 self.audio.play()
-    #                 self.display.show_message("> PLAY")
-    #             time.sleep(0.3)
-    #             processed = True
-    #         
-    #         elif pose == 'fist':
-    #             self.audio.stop()
-    #             self.audio.load_track()
-    #             self.display.show_message("[] STOP")
-    #             time.sleep(0.3)
-    #             processed = True
-    #         
-    #         self.last_pose_processed = pose if processed else self.last_pose_processed
-    #     
-    #     if 'finger_distance' in hand_data:
-    #         distance = hand_data['finger_distance']
-    #         speed = 0.5 + (distance * 3.0)
-    #         self.audio.set_tempo(speed)
-    
-    def update_display(self):
-        """Update display with current state"""
-        state = self.audio.get_state()
-        self.display.update_dj_display(state)
-    
     def _update_web_state(self):
-        """Immediately update web interface with current state"""
+        """Update web interface with current state"""
         if hasattr(self, 'web_enabled') and self.web_enabled and WEB_AVAILABLE:
-            state = self.audio.get_state()
+            state = self.core.get_state()
             web_server.update_state(state)
     
     def run(self, enable_web=False):
@@ -234,6 +74,16 @@ class GestureDJ:
         print("\nVoice Commands:")
         print("  'play'      : Start playback")
         print("  'pause'     : Pause playback")
+        print("\nMediaPipe Hand Gestures:")
+        if self.core.hand_tracker:
+            print("  PALM (5)    : Light/day theme (hold 2s)")
+            print("  FIST (0)    : Dark/night theme (hold 2s)")
+            if self.web_mode:
+                print("  >> Camera feed visible in browser only")
+            else:
+                print("  >> Camera window visible in VNC")
+        else:
+            print("  (MediaPipe not available)")
         
         if enable_web and WEB_AVAILABLE:
             import socket
@@ -246,27 +96,40 @@ class GestureDJ:
         print("\nPress Ctrl+C to quit")
         print("=" * 50 + "\n")
         
-        # Start voice control in background
-        self.voice.start(callback=self.handle_voice_command)
+        # Start voice control
+        self.core.voice.start(callback=lambda cmd: self._handle_voice(cmd))
         
-        # Start web server in background if enabled
+        # Start web server if enabled
         if enable_web and WEB_AVAILABLE:
-            import webbrowser
-            import socket
-            
-            web_server.set_audio_engine(self.audio)
-            self._web_thread = threading.Thread(
-                target=web_server.run_server,
-                kwargs={'host': '0.0.0.0', 'port': 5000, 'debug': False},
-                daemon=True
-            )
-            self._web_thread.start()
-            print("[Web] Visualization server started")
-            
-            # Auto-open browser after short delay
-            time.sleep(2)
+            self._start_web_server()
+        
+        self._run_hardware()
+    
+    def _start_web_server(self):
+        """Start web server in background"""
+        import webbrowser
+        import socket
+        
+        web_server.set_audio_engine(self.core.audio)
+        
+        if self.core.hand_tracker:
+            web_server.set_hand_tracker(self.core.hand_tracker)
+            print("[Web] Camera streaming enabled")
+        
+        self._web_thread = threading.Thread(
+            target=web_server.run_server,
+            kwargs={'host': '0.0.0.0', 'port': 5000, 'debug': False},
+            daemon=True
+        )
+        self._web_thread.start()
+        print("[Web] Visualization server started")
+        
+        time.sleep(1)
+        
+        # Auto-open browser (skip if --no-browser)
+        if '--no-browser' not in sys.argv:
+            time.sleep(1)
             try:
-                # Try to get local IP
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.connect(("8.8.8.8", 80))
                 local_ip = s.getsockname()[0]
@@ -277,50 +140,81 @@ class GestureDJ:
             
             print(f"[Web] Opening browser: {url}")
             webbrowser.open(url)
-        
-        self._run_hardware()
+        else:
+            print("[Web] Browser auto-open disabled")
+    
+    def _handle_voice(self, command):
+        """Handle voice command and update display"""
+        result = self.core.handle_voice_command(command)
+        if result:
+            if result['action'] == 'play':
+                self.display.show_message("> PLAY")
+            elif result['action'] == 'pause':
+                self.display.show_message("|| PAUSE")
+            self._update_web_state()
     
     def _run_hardware(self):
-        """Run with actual hardware sensors"""
+        """Run main hardware loop"""
         last_display_update = time.time()
         last_web_update = time.time()
         display_update_interval = 0.5
-        web_update_interval = 0.1  # 10 FPS for web
+        web_update_interval = 0.1
+        
+        print("\n[Main Loop] Starting...")
         
         try:
             while self.running:
-                # Check APDS for gestures
-                gesture = self.apds.get_gesture()
+                # APDS gestures
+                gesture = self.core.apds.get_gesture()
                 if gesture:
-                    self.handle_apds_gesture(gesture)
+                    result = self.core.handle_apds_gesture(gesture)
+                    if result:
+                        if result['type'] == 'track_change':
+                            track = result['track']
+                            self.display.show_message(f"{result['action'].upper()} Track {track['id']}")
+                        elif result['type'] == 'volume_change':
+                            volume = int(result['volume'] * 100)
+                            self.display.show_message(f"Volume: {volume}%")
+                        self._update_web_state()
                 
-                # Check MPR121 for touch input
-                action = self.mpr121.get_action()
+                # MPR121 touch
+                action = self.core.mpr121.get_action()
                 if action:
-                    self.handle_mpr121_touch(action)
+                    result = self.core.handle_mpr121_touch(action)
+                    if result:
+                        if result['type'] == 'track_select':
+                            track = result['track']
+                            if track:
+                                self.display.show_message(f"Track {track['id']}")
+                        elif result['type'] == 'playback':
+                            if result['action'] == 'play':
+                                self.display.show_message("> PLAY")
+                            elif result['action'] == 'pause':
+                                self.display.show_message("|| PAUSE")
+                            elif result['action'] == 'stop':
+                                self.display.show_message("[] STOP")
+                        self._update_web_state()
                 
-                # Voice commands are handled via callback in background thread
+                # MediaPipe hand tracking
+                if self.core.hand_tracker:
+                    hand_data = self.core.hand_tracker.get_data()
+                    if hand_data:
+                        result = self.core.handle_hand_gesture(hand_data)
+                        if result and result['type'] == 'mood_change':
+                            mood = result['mood']
+                            self.display.show_message(f"{mood['name'].upper()} THEME")
+                            self._update_web_state()
                 
-                # MediaPipe hand tracking (disabled)
-                # hand_data = self.hand_tracker.get_data()
-                # if hand_data:
-                #     self.handle_hand_gesture(hand_data)
-                
-                # Check APDS again
-                gesture = self.apds.get_gesture()
-                if gesture:
-                    self.handle_apds_gesture(gesture)
-                
-                # Update display periodically
+                # Update OLED display
                 if time.time() - last_display_update > display_update_interval:
-                    self.update_display()
+                    state = self.core.get_state()
+                    self.display.update_dj_display(state)
                     last_display_update = time.time()
                 
-                # Update web server state
+                # Update web
                 if self.web_enabled and WEB_AVAILABLE:
                     if time.time() - last_web_update > web_update_interval:
-                        state = self.audio.get_state()
-                        web_server.update_state(state)
+                        self._update_web_state()
                         last_web_update = time.time()
                 
                 time.sleep(0.02)
@@ -331,19 +225,11 @@ class GestureDJ:
             self.cleanup()
     
     def cleanup(self):
-        """Clean up all resources"""
+        """Clean up resources"""
         print("\nCleaning up...")
         self.running = False
         
-        self.audio.stop()
-        
-        # Stop voice control
-        if hasattr(self, 'voice'):
-            self.voice.stop()
-        
-        # MediaPipe cleanup (disabled)
-        # if hasattr(self, 'hand_tracker') and hasattr(self.hand_tracker, 'cleanup'):
-        #     self.hand_tracker.cleanup()
+        self.core.cleanup()
         
         if hasattr(self.display, 'cleanup'):
             self.display.cleanup()
@@ -353,21 +239,20 @@ class GestureDJ:
 
 def main():
     """Main entry point"""
-    # Check for --web flag
     enable_web = '--web' in sys.argv
     
     print("Starting Gesture DJ with HARDWARE")
     if enable_web:
         if WEB_AVAILABLE:
-            print("Web visualization ENABLED")
+            print("Web visualization ENABLED (camera streams to browser)")
         else:
-            print("Warning: Web server not available (missing dependencies)")
+            print("Warning: Web server not available")
             enable_web = False
     
-    # Create and run Gesture DJ
-    dj = GestureDJ()
+    # Create and run
+    dj = GestureDJ(web_mode=enable_web)
     
-    # Handle Ctrl+C gracefully
+    # Handle Ctrl+C
     def signal_handler(sig, frame):
         print("\nInterrupt received... Exiting.")
         dj.running = False
@@ -376,7 +261,7 @@ def main():
     
     signal.signal(signal.SIGINT, signal_handler)
     
-    # Start the system
+    # Start
     dj.run(enable_web=enable_web)
 
 
